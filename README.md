@@ -24,7 +24,7 @@
 | 定制 PCB 载板 | 80×50mm 双面 (JLCPCB) | 消灭飞线，XH2.54 即插即用 |
 | EC11 旋钮 × 2 | 15mm 半轴柄旋转编码器 | 频率调节 / 模式切换 |
 | Kailh BOX 轴 + 6.25U 卫星轴 | 机械键盘蝴蝶结构，3.6mm 行程 | Action Button |
-| RC522 mini NFC 模块 | 13.56MHz SPI，读 NTAG213 UID | NFC 刷卡交互 |
+| RC522 mini NFC 模块 × 1~2 | 13.56MHz SPI，读 NTAG215 UID | NFC 刷卡交互（数量待确认） |
 | WS2812B LED × 1 | 5050 RGB | 状态指示 |
 | USB-C 大电流转接板 × 2 + SS34 | PCB 板载 VBUS 注入，替代 FPC+一分二 | 充电 + 数据单线直连 |
 
@@ -89,13 +89,16 @@ cosmo-radio/                            # 项目根 = ESP-IDF USB HID 固件
 
 ## V4 进度
 
-- [x] BOM 定稿 + 报价
+- [x] BOM 定稿 + 报价（单套 ¥79，12 套总计约 ¥13,000）
+- [x] 第一次需求会议（2026-04-01，与 Arthur/纪晟）
 - [ ] PCB 载板设计 (KiCad → JLCPCB)
 - [x] USB-C 板载集成评估 — 方案 B (VBUS 被动注入) 选定，待面包板验证
-- [ ] 按钮机构原型验证 (Kailh + 卫星轴)
+- [ ] 按钮机构原型验证 (6.25U 卫星轴空格键，物料预计 04-02/03 到)
+- [ ] NFC 数量确认 (1 vs 2，待杨炜乐讨论)
 - [ ] NFC 驱动开发 (RC522 SPI)
+- [ ] 旋钮 + NFC 协议规范文档
 - [ ] 固件迁移 (SuperMini → DevKitC N16R8)
-- [ ] 外壳适配 (Arthur Fusion 360)
+- [ ] 外壳适配 (Arthur Fusion 360，概念图已出)
 - [ ] 12 套组装 + 4 套整机测试
 - [ ] 交付
 

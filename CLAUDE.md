@@ -86,6 +86,12 @@ NFC uses FSPI hardware SPI bus (GPIO34-37) for best performance.
 - **Power**: 外部充电器 → J6 VBUS → PCB → J5 VBUS → 平板（方案 B 被动注入）
 - **PCB**: Custom carrier board, 80×50mm, XH2.54 connectors
 - **Connectors**: J1/J2 (EC11 5P), J3 (Top module 3P/4P), J4 (NFC 8P), J5 (USB-C 平板输出), J6 (USB-C 充电输入)
+- **Screws**: M2.5×10 平头内六角 (flat head hex socket)
+- **Speaker**: 使用平板自带音响，不外接
+- **Top button**: 键盘轴 + 6.25U 卫星轴空格键 (~10cm)
+- **Encoder press**: EC11 SW 引脚已接线，功能可选不用
+- **NFC count**: ⚠️ 待确认 1 vs 2 个 RC522 模块（影响 GPIO/PCB）
+- **Cost**: 单套 ¥79（不含线材），主控板 ~¥32 (40%)
 
 ## PCB Design
 
