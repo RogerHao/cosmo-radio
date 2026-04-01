@@ -1,83 +1,91 @@
-# =============================================================================
-# Cosmo Pager Radio - Git Ignore
-# =============================================================================
-
-# -----------------------------------------------------------------------------
 # macOS
-# -----------------------------------------------------------------------------
 .DS_Store
 .AppleDouble
 .LSOverride
-._*
 
-# -----------------------------------------------------------------------------
-# VS Code
-# -----------------------------------------------------------------------------
-# User-specific settings (keep workspace file for team sharing)
-.vscode/settings.json
-.vscode/c_cpp_properties.json
-.vscode/launch.json
-# Keep .code-workspace for team sharing
+# Directory metadata
+.directory
 
-# -----------------------------------------------------------------------------
-# Claude Code
-# -----------------------------------------------------------------------------
-.claude/
-
-# -----------------------------------------------------------------------------
-# Python
-# -----------------------------------------------------------------------------
-__pycache__/
-*.py[cod]
-*$py.class
-.venv/
-venv/
-env/
-
-# -----------------------------------------------------------------------------
-# Logs & Temp
-# -----------------------------------------------------------------------------
-*.log
-*.tmp
-*.bak
+# Temporary files
 *~
 *.swp
 *.swo
+*.bak
+*.tmp
 
-# -----------------------------------------------------------------------------
-# Build artifacts (general)
-# -----------------------------------------------------------------------------
+# Log files
+*.log
+
+# Build artifacts and directories
+**/build/
+build/
 *.o
 *.a
-*.so
-*.dylib
+*.out
+*.exe # For any host-side utilities compiled on Windows
 
-# -----------------------------------------------------------------------------
-# Archives & Binaries
-# -----------------------------------------------------------------------------
-*.zip
-*.tar.gz
-*.rar
-*.7z
+# ESP-IDF specific build outputs
+*.bin
+*.elf
+*.map
+flasher_args.json # Generated in build directory
+sdkconfig.old
+sdkconfig
+
+# ESP-IDF dependencies
+# For older versions or manual component management
+/components/.idf/
+**/components/.idf/
+# For modern ESP-IDF component manager
+managed_components/
+# If ESP-IDF tools are installed/referenced locally to the project
+.espressif/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+
+# Python environment files
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.egg-info/
+dist/
+
+# Virtual environment folders
+venv/
+.venv/
+env/
+
+# Language Servers
+.clangd/
+.ccls-cache/
+.cache/
+compile_commands.json
+
+# Windows specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# User-specific configuration files
+*.user
+*.workspace # General workspace files, can be from various tools
+*.suo       # Visual Studio Solution User Options
+*.sln.docstates # Visual Studio
+
+# Screenshots (temporary captures, not versioned)
+Snipaste_*.png
+
+# Binaries and large assets (not versioned in git)
 *.apk
-*.aab
 apk/
-
-# -----------------------------------------------------------------------------
-# 3D Models & Assets
-# -----------------------------------------------------------------------------
 models/
-*.stl
-*.3mf
-*.obj
-*.fbx
-*.blend
-*.blend1
 
-# -----------------------------------------------------------------------------
-# ESP-IDF specific (firmware directory has its own detailed .gitignore)
-# These are root-level catches
-# -----------------------------------------------------------------------------
-# sdkconfig is generated, sdkconfig.defaults is the source of truth
-# firmware/sdkconfig  # Already in firmware/.gitignore
-# firmware/build/     # Already in firmware/.gitignore
+# IDE config (per-machine, not shared)
+.vscode/
+.devcontainer/

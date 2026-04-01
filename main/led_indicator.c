@@ -9,8 +9,8 @@
 
 static const char *TAG = "LED";
 
-// WS2812 LED on D5 (GPIO6 on XIAO ESP32S3)
-#define LED_GPIO    6
+// WS2812 LED on GP7 (ESP32-S3 SuperMini)
+#define LED_GPIO    7
 
 // Number of LEDs in strip (single LED)
 #define LED_COUNT   1

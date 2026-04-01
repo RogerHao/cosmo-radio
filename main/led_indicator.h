@@ -15,7 +15,7 @@ extern "C" {
 
 /**
  * Initialize the LED indicator
- * Sets up RMT peripheral for WS2812 control on D5 (GPIO6)
+ * Sets up RMT peripheral for WS2812 control on GP7
  *
  * @return ESP_OK on success
  */

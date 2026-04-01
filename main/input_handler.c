@@ -16,15 +16,16 @@
 
 static const char *TAG = "INPUT";
 
-// GPIO pin definitions (XIAO ESP32S3)
-#define GPIO_BUTTON     1   // D0
-#define GPIO_ENC1_CLK   2   // D1
-#define GPIO_ENC1_DT    3   // D2
-#define GPIO_ENC2_CLK   4   // D3
-#define GPIO_ENC2_DT    5   // D4
+// GPIO pin definitions (ESP32-S3 SuperMini)
+#define GPIO_BUTTON_A   1   // GP1 - Button (redundant pair)
+#define GPIO_BUTTON_B   2   // GP2 - Button (redundant pair)
+#define GPIO_ENC1_CLK   4   // GP4
+#define GPIO_ENC1_DT    3   // GP3
+#define GPIO_ENC2_CLK   5   // GP5
+#define GPIO_ENC2_DT    6   // GP6
 
 // All input GPIOs as a mask
-#define GPIO_INPUT_MASK ((1ULL << GPIO_BUTTON) | \
+#define GPIO_INPUT_MASK ((1ULL << GPIO_BUTTON_A) | (1ULL << GPIO_BUTTON_B) | \
                          (1ULL << GPIO_ENC1_CLK) | (1ULL << GPIO_ENC1_DT) | \
                          (1ULL << GPIO_ENC2_CLK) | (1ULL << GPIO_ENC2_DT))
 
@@ -59,8 +60,8 @@ static int s_btn_last = 1;  // Pull-up, 1 = released
 // Button press timestamp for force restart detection
 static int64_t s_btn_press_time = 0;
 
-// Last ISR time for each GPIO (for software debounce)
-static int64_t s_last_isr_time[6] = {0};
+// Last ISR time for each GPIO (for software debounce, indexed by gpio_num)
+static int64_t s_last_isr_time[8] = {0};
 
 // ISR handler - minimal work, just queue the event
 // Note: Keep this as simple as possible to avoid watchdog issues
@@ -121,7 +122,8 @@ static void input_handler_task(void *arg)
     // Initialize encoder states
     s_enc1_state = (gpio_get_level(GPIO_ENC1_CLK) << 1) | gpio_get_level(GPIO_ENC1_DT);
     s_enc2_state = (gpio_get_level(GPIO_ENC2_CLK) << 1) | gpio_get_level(GPIO_ENC2_DT);
-    s_btn_last = gpio_get_level(GPIO_BUTTON);
+    // Redundant button: pressed if either pin is low
+    s_btn_last = gpio_get_level(GPIO_BUTTON_A) & gpio_get_level(GPIO_BUTTON_B);
 
     s_running = true;
     s_last_activity_time = esp_timer_get_time();
@@ -144,19 +146,21 @@ static void input_handler_task(void *arg)
             s_last_activity_time = now;
 
             // Process based on which GPIO triggered
-            if (evt.gpio_num == GPIO_BUTTON) {
-                if (evt.level == 0 && s_btn_last == 1) {
+            if (evt.gpio_num == GPIO_BUTTON_A || evt.gpio_num == GPIO_BUTTON_B) {
+                // Redundant button: read both pins, pressed if either is low
+                int btn_level = gpio_get_level(GPIO_BUTTON_A) & gpio_get_level(GPIO_BUTTON_B);
+                if (btn_level == 0 && s_btn_last == 1) {
                     // Button pressed - record timestamp
                     s_btn_press_time = esp_timer_get_time();
                     input_evt.type = INPUT_EVENT_BUTTON_PRESS;
-                    ESP_LOGD(TAG, "Button pressed");
-                } else if (evt.level == 1 && s_btn_last == 0) {
+                    ESP_LOGD(TAG, "Button pressed (GPIO%d)", evt.gpio_num);
+                } else if (btn_level == 1 && s_btn_last == 0) {
                     // Button released - clear timestamp
                     s_btn_press_time = 0;
                     input_evt.type = INPUT_EVENT_BUTTON_RELEASE;
-                    ESP_LOGD(TAG, "Button released");
+                    ESP_LOGD(TAG, "Button released (GPIO%d)", evt.gpio_num);
                 }
-                s_btn_last = evt.level;
+                s_btn_last = btn_level;
             }
             else if (evt.gpio_num == GPIO_ENC1_CLK || evt.gpio_num == GPIO_ENC1_DT) {
                 // Read both pins for encoder 1
@@ -237,22 +241,24 @@ esp_err_t input_handler_init(void)
     }
 
     // Add ISR handlers for each GPIO (interrupts still disabled)
-    gpio_isr_handler_add(GPIO_BUTTON, gpio_isr_handler, (void*)GPIO_BUTTON);
+    gpio_isr_handler_add(GPIO_BUTTON_A, gpio_isr_handler, (void*)GPIO_BUTTON_A);
+    gpio_isr_handler_add(GPIO_BUTTON_B, gpio_isr_handler, (void*)GPIO_BUTTON_B);
     gpio_isr_handler_add(GPIO_ENC1_CLK, gpio_isr_handler, (void*)GPIO_ENC1_CLK);
     gpio_isr_handler_add(GPIO_ENC1_DT, gpio_isr_handler, (void*)GPIO_ENC1_DT);
     gpio_isr_handler_add(GPIO_ENC2_CLK, gpio_isr_handler, (void*)GPIO_ENC2_CLK);
     gpio_isr_handler_add(GPIO_ENC2_DT, gpio_isr_handler, (void*)GPIO_ENC2_DT);
 
     // Now enable interrupts on each GPIO
-    gpio_set_intr_type(GPIO_BUTTON, GPIO_INTR_ANYEDGE);
+    gpio_set_intr_type(GPIO_BUTTON_A, GPIO_INTR_ANYEDGE);
+    gpio_set_intr_type(GPIO_BUTTON_B, GPIO_INTR_ANYEDGE);
     gpio_set_intr_type(GPIO_ENC1_CLK, GPIO_INTR_ANYEDGE);
     gpio_set_intr_type(GPIO_ENC1_DT, GPIO_INTR_ANYEDGE);
     gpio_set_intr_type(GPIO_ENC2_CLK, GPIO_INTR_ANYEDGE);
     gpio_set_intr_type(GPIO_ENC2_DT, GPIO_INTR_ANYEDGE);
 
     ESP_LOGI(TAG, "Input handler initialized (GPIO interrupts)");
-    ESP_LOGI(TAG, "  Button: GPIO%d, ENC1: GPIO%d/%d, ENC2: GPIO%d/%d",
-             GPIO_BUTTON, GPIO_ENC1_CLK, GPIO_ENC1_DT, GPIO_ENC2_CLK, GPIO_ENC2_DT);
+    ESP_LOGI(TAG, "  Button: GPIO%d+%d (redundant), ENC1: GPIO%d/%d, ENC2: GPIO%d/%d",
+             GPIO_BUTTON_A, GPIO_BUTTON_B, GPIO_ENC1_CLK, GPIO_ENC1_DT, GPIO_ENC2_CLK, GPIO_ENC2_DT);
 
     return ESP_OK;
 }

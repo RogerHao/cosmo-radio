@@ -1,6 +1,0 @@
-## IDF Component Manager Configuration
-## https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/tools/idf-component-manager.html
-
-dependencies:
-  # WS2812 LED strip driver
-  espressif/led_strip: "^2.5.0"
