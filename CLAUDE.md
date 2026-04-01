@@ -4,18 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Hardware mod project: Building a desktop "Parallel Universe Radio" device using an Android tablet with custom input controls via ESP32 HID (BLE or USB).
+CosmoRadio — 桌面"平行宇宙收音机"交互设备。安卓平板 + 3D 打印外壳 + ESP32 USB HID 控制器 + 旋钮/按钮/NFC。
 
-**Architecture**: Android Tablet <-- HID (BLE/USB) --> XIAO ESP32S3 <-- GPIO --> EC11 rotary encoders + button + WS2812 LED
+**当前版本：V4**（2026.04 — 2026.05）
 
-## Firmware Options
+**Architecture**: Android Tablet <-- USB HID --> ESP32-S3 DevKitC N16R8 (on custom PCB carrier board) <-- GPIO/SPI --> EC11 × 2 + Kailh BOX button + WS2812B LED + RC522 NFC
 
-The project supports two HID implementations:
+**项目文档**: `docs/project/` (symlink → codex) — BOM、PCB Spec、项目主文档
 
-| Firmware | Directory | Connection | Use Case |
-|----------|-----------|------------|----------|
-| BLE HID | `firmware/` | Bluetooth Low Energy | Wireless, battery-powered |
-| USB HID | `tusb_hid/` | USB cable | Wired, more stable, lower latency |
+## Firmware
+
+| Firmware | Directory | Status |
+|----------|-----------|--------|
+| USB HID | `tusb_hid/` | **Active** — V3/V4 使用 |
+| BLE HID | `firmware/` | Deprecated — V1/V2 遗留 |
 
 ## Build Commands
 
@@ -53,40 +55,50 @@ idf.py fullclean
 ## Code Architecture
 
 ```
-firmware/                          # BLE HID implementation
+tusb_hid/                          # USB HID (active)
 ├── main/
-│   ├── esp_hid_device_main.c      # Entry point, BLE HID + input handling
-│   ├── esp_hid_gap.c              # BLE GAP/GATT, pairing, connection
+│   ├── tusb_hid_example_main.c    # Entry point, USB HID + input handling
 │   ├── input_handler.c/h          # GPIO interrupt-based input
 │   └── led_indicator.c/h          # WS2812 LED control
 ├── sdkconfig.defaults
 └── CMakeLists.txt
 
-tusb_hid/                          # USB HID implementation
-├── main/
-│   ├── tusb_hid_example_main.c    # Entry point, USB HID + input handling
-│   ├── input_handler.c/h          # GPIO interrupt-based input (shared)
-│   └── led_indicator.c/h          # WS2812 LED control (shared)
-├── sdkconfig.defaults
-└── CMakeLists.txt
+firmware/                          # BLE HID (deprecated, V1/V2 only)
+└── ...
 ```
 
-**Shared modules**: `input_handler` and `led_indicator` are protocol-agnostic and identical in both firmware projects.
+## GPIO Pin Assignments (V4 — ESP32-S3 DevKitC N16R8)
 
-## GPIO Pin Assignments
+| Function | GPIO | Notes |
+|----------|------|-------|
+| EC11 Left A | 1 | Interrupt, 10K pull-up |
+| EC11 Left B | 2 | Interrupt, 10K pull-up |
+| EC11 Left SW | 3 | Press = GND |
+| EC11 Right A | 4 | Interrupt, 10K pull-up |
+| EC11 Right B | 5 | Interrupt, 10K pull-up |
+| EC11 Right SW | 6 | Press = GND |
+| Action Button | 7 | Kailh BOX switch, press = GND |
+| WS2812B DIN | 8 | Series 330R resistor |
+| RC522 NFC CS | 34 (FSPICS0) | Hardware SPI |
+| RC522 NFC MOSI | 35 (FSPID) | Hardware SPI |
+| RC522 NFC SCK | 36 (FSPICLK) | Hardware SPI |
+| RC522 NFC MISO | 37 (FSPIQ) | Hardware SPI |
+| RC522 NFC RST | 9 | Reset |
+| USB D- | 19 | Native USB OTG (fixed) |
+| USB D+ | 20 | Native USB OTG (fixed) |
+| Reserved | 10-18 | Expansion |
 
-| GPIO | XIAO Pin | Function | Module |
-|------|----------|----------|--------|
-| 1 | D0 | Button | input_handler |
-| 2 | D1 | Encoder 1 CLK | input_handler |
-| 3 | D2 | Encoder 1 DT | input_handler |
-| 4 | D3 | Encoder 2 CLK | input_handler |
-| 5 | D4 | Encoder 2 DT | input_handler |
-| 6 | D5 | WS2812 LED | led_indicator |
-| 19 | — | USB D- | TinyUSB (native) |
-| 20 | — | USB D+ | TinyUSB (native) |
+All input GPIOs use pull-up resistors (external 10K on PCB for EC11, internal for button).
+NFC uses FSPI hardware SPI bus (GPIO34-37) for best performance.
 
-All input GPIOs use internal pull-up resistors. Active low (connect to GND when triggered).
+### V3 GPIO (SuperMini — deprecated)
+
+| GPIO | Function |
+|------|----------|
+| 1, 2 | Button A/B (redundant) |
+| 3, 4 | Encoder 1 CLK/DT |
+| 5, 6 | Encoder 2 CLK/DT |
+| 7 | WS2812 LED |
 
 ## HID Key Mappings
 
@@ -94,66 +106,58 @@ All input GPIOs use internal pull-up resistors. Active low (connect to GND when 
 |-------|---------|-------------|
 | Button press | Enter | Confirm action |
 | Button release | (key up) | |
-| Encoder 1 CW | ↑ Up arrow | Frequency up |
-| Encoder 1 CCW | ↓ Down arrow | Frequency down |
-| Encoder 2 CW | → Right arrow | Mode next |
-| Encoder 2 CCW | ← Left arrow | Mode previous |
+| Encoder 1 CW | Up arrow | Frequency up |
+| Encoder 1 CCW | Down arrow | Frequency down |
+| Encoder 2 CW | Right arrow | Mode next |
+| Encoder 2 CCW | Left arrow | Mode previous |
+| NFC tag scan | TBD | V4: mapped by UID → keycode |
 
-## LED Indicator Behavior
+## Hardware Target (V4)
 
-| Event | LED Color |
-|-------|-----------|
-| Button pressed | Red |
-| Button released | Off |
-| USB/BLE connected | Blue flash |
-| Startup | Green flash |
+| Board | Flash | PSRAM |
+|-------|-------|-------|
+| ESP32-S3 DevKitC N16R8 | 16MB | 8MB |
 
-## VS Code Workspace
+- **Power**: USB from tablet (5V via Type-C)
+- **PCB**: Custom carrier board, 80×50mm, XH2.54 connectors
+- **Connectors**: J1/J2 (EC11 5P), J3 (Top module 3P/4P), J4 (NFC 8P), J5 (USB-C)
 
-Use the multi-root workspace for proper ESP-IDF extension support:
-```bash
-code cosmo-pager-radio.code-workspace
-```
+## PCB Design
 
-## Hardware Target
+Carrier board designed in KiCad, manufactured by JLCPCB.
 
-- **Board**: Seeed Studio XIAO ESP32S3
-- **Power**: USB or 3.7V Li-battery → XIAO B+/B- pads
-- **Flash**: 8MB
-- **LED**: WS2812 RGB on GPIO6 (D5)
+- Spec: `docs/project/CosmoRadio-V4-PCB-Spec.md`
+- BOM: `docs/project/CosmoRadio-V4-BOM及报价分析.md`
+
+Key design decisions:
+- ESP32-S3 DevKitC plugs into 2×22P pin header sockets (not soldered)
+- All peripherals connect via XH2.54 JST connectors (zero-solder assembly)
+- NFC uses FSPI hardware SPI (GPIO34-37) for signal integrity
+- External 10K pull-ups for EC11 (more reliable than internal pull-ups)
 
 ## HID Input Test Tool
-
-A retro-futuristic test page for verifying HID input functionality:
 
 ```
 test/hid-test.html
 ```
 
-**Features:**
-- Three-circle layout matching physical mask (1280x720 screen)
-- Left dial: Frequency display (88.0-108.0 MHz), controlled by ↑↓ keys
-- Right dial: Mode selector (FM/AM/SW/LW/MW), controlled by ←→ keys
-- Center: Confirm button, controlled by Enter key
-- Smooth continuous scroll animation (retro radio dial style)
-- Amber/cyan glow effects with CRT aesthetic
-
-**Usage:** Transfer to device and open in browser for HID input testing.
-
-## Special Features
-
-### Force Restart
-Hold the button for 15 seconds to trigger a device restart. Useful for recovery from stuck states.
+Three-circle layout matching physical mask. Transfer to device and open in browser for HID input testing.
 
 ## Known Limitations / Technical Debt
 
 ### HID Key Report: No Multi-key Support
 
-Current `send_key_up()` releases ALL keys (sends empty report), not a specific key. This is fine for current single-button use case, but will cause issues if:
-- User holds button while rotating encoder
-- Future features require modifier keys (Shift+Enter, etc.)
+Current `send_key_up()` releases ALL keys (sends empty report). Fine for single-input use case, will need fix for hold-button-while-rotating scenarios.
 
-**Fix when needed**: Maintain a `pressed_keys[6]` state array, add/remove individual keycodes, and send updated report on each change.
+**Fix when needed**: Maintain `pressed_keys[6]` state array, add/remove individual keycodes per event.
+
+### V4 Migration Pending
+
+Firmware still targets SuperMini GPIO mapping. V4 migration tasks:
+- Remap all GPIOs to DevKitC N16R8 pin assignments
+- Add RC522 NFC SPI driver (FSPI bus)
+- Add Kailh button handler (GPIO7)
+- Update `sdkconfig.defaults` for N16R8 flash/PSRAM config
 
 ## Documentation Language
 
