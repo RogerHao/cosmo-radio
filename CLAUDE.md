@@ -152,7 +152,7 @@ docs/
 | Repo | What | Status |
 |------|------|--------|
 | [cosmo-pager](https://github.com/RogerHao/cosmo-pager) | ESP32-S3 嵌入式方案（3.5寸触屏），被 USB HID 方案取代 | Archived |
-| [astro-pager](https://github.com/RogerHao/astro-pager) | 明德实验学校学生团队项目（2024 Q4） | Archived |
+| [astro-pager](https://github.com/RogerHao/astro-pager) | 超脑AI孵化器学生黑客松硬件项目（2024 Q4），Alien Agent 生态 | Archived |
 
 ### 新增元器件/模块规范
 
