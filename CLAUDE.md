@@ -1,16 +1,18 @@
-# CLAUDE.md
+# CosmoRadio
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+> 桌面"平行宇宙收音机"交互设备。客户定制硬件项目（暂停）。
 
 ## Project Overview
 
-CosmoRadio — 桌面"平行宇宙收音机"交互设备。安卓平板 + 3D 打印外壳 + ESP32 USB HID 控制器 + 旋钮/按钮/NFC。
+安卓平板 + 3D 打印外壳 + ESP32 USB HID 控制器 + 旋钮/按钮/NFC。
 
-**当前版本：V4**（2026.04 — 2026.05）
+**当前版本：V4**（2026.04 — 暂停，投资人 4/2 取消合同）
 
 **Architecture**: Android Tablet <-- USB HID --> ESP32-S3 DevKitC N16R8 (on custom PCB carrier board) <-- GPIO/SPI --> EC11 × 2 + Kailh BOX button + WS2812B LED + RC522 NFC
 
-**项目文档**: `docs/project/` (symlink → codex) — BOM、PCB Spec、项目主文档
+**客户**: 杨炜乐 / 上海噗噗噗教育科技有限公司。R1-R3 已交付（¥26,000 已结清），R4 合同取消。
+
+**项目文档**: `docs/project/` — BOM、PCB Spec、项目主文档、R1-R3 归档
 
 ## Firmware
 
@@ -138,8 +140,19 @@ docs/
 ├── firmware/        # 固件实现文档
 ├── hardware/        # 硬件模块设计方案 (每个模块一个 .md)
 ├── legacy/          # 弃用内容 (E5Ultra, 旧参考)
-└── project/ → codex # BOM、PCB Spec、项目主文档 (symlink, 勿直接编辑路径)
+└── project/         # BOM、PCB Spec、项目主文档、R1-R3 归档
+    ├── cosmoradio-yangweile-customized-hardware.md  # 项目主文档（合同、交付、财务）
+    ├── CosmoRadio-V4-BOM及报价分析.md
+    ├── CosmoRadio-V4-PCB-Spec.md
+    └── archive-r1-r3/                               # V1-V3 历史交付文档
 ```
+
+## Related Repos (archived, not active)
+
+| Repo | What | Status |
+|------|------|--------|
+| [cosmo-pager](https://github.com/RogerHao/cosmo-pager) | ESP32-S3 嵌入式方案（3.5寸触屏），被 USB HID 方案取代 | Archived |
+| [astro-pager](https://github.com/RogerHao/astro-pager) | 明德实验学校学生团队项目（2024 Q4） | Archived |
 
 ### 新增元器件/模块规范
 
@@ -166,7 +179,7 @@ docs/
 - 目录名：小写英文，连字符分隔 (`hardware/`, `legacy/`)
 - 文档：小写英文，连字符分隔 (`nfc.md`, `usb.md`)
 - 图片：`<模块>-<描述>.png` (`usb-c-breakout-6p-pinout.png`)
-- 项目文档 (docs/project/)：中文标题允许，跟随 codex 命名
+- 项目文档 (docs/project/)：中文标题允许
 
 ## Documentation Language
 
