@@ -1,18 +1,27 @@
 # CosmoRadio
 
-> 桌面"平行宇宙收音机"交互设备。客户定制硬件项目（暂停）。
+> 桌面"平行宇宙收音机"交互设备。客户定制硬件项目（技术验证 + 单套原型）。
 
 ## Project Overview
 
 安卓平板 + 3D 打印外壳 + ESP32 USB HID 控制器 + 旋钮/按钮/NFC。
 
-**当前版本：V4**（2026.04 — 暂停，投资人 4/2 取消合同）
+**当前版本：V4**（2026.04 — 2026.05，04/29 重启为技术方案验证 + 单套原型制作）
 
 **Architecture**: Android Tablet <-- USB HID --> ESP32-S3 DevKitC N16R8 (on custom PCB carrier board) <-- GPIO/SPI --> EC11 × 2 + Kailh BOX button + WS2812B LED + RC522 NFC
 
-**客户**: 杨炜乐 / 上海噗噗噗教育科技有限公司。R1-R3 已交付（¥26,000 已结清），R4 合同取消。
+**客户**: 杨炜乐 / 上海噗噗噗教育科技有限公司。R1-R3 已交付（¥26,000 已结清）。R4 原 4+8 批量交付合同在 04/02 取消，04/29 与 Arthur 重启为 ¥5,000 技术验证 + 单套原型。
 
 **项目文档**: `docs/project/` — BOM、PCB Spec、项目主文档、R1-R3 归档
+
+## Current V4 Scope
+
+- **Restart date**: 2026-04-29, agreement with Arthur
+- **Contract price**: ¥5,000
+- **Deliverable**: technical solution validation + one working prototype
+- **Target delivery**: around 2026-05-20
+- **Primary risk**: PCB design and validation
+- **Out of scope**: original 4 complete devices + 8 electronics kits batch delivery
 
 ## Firmware
 
