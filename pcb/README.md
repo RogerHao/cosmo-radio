@@ -185,7 +185,21 @@ flowchart LR
 | 热稳定 | 连续运行 2 小时无明显温升 |
 | 恢复能力 | 平板重启、熄屏、亮屏、重插后能恢复 |
 
-修正后的第一版验证拓扑必须包含 `SYS_5V` 电源 OR-ing：
+第一版验证可分两档。用现有 SS34 即可，不需要另买“理想二极管”模块。
+
+最小验证拓扑只需要 1 颗 SS34：
+
+```mermaid
+flowchart LR
+    chg[外部 5V] --> d1[SS34]
+    d1 --> tabv[Tab A9 VBUS / SYS_5V]
+    tabv --> esp[ESP32 5V]
+    tab[Tab A9 D+/D-] <-- USB2 --> esp
+```
+
+这个拓扑里 `Tab_A9_VBUS` 和 `SYS_5V` 是同一个节点。不插外部电源时，平板作为 USB Host 给 ESP32 供电；插外部电源时，外部 5V 通过 SS34 尝试注入同一节点。SS34 的作用是防止平板 VBUS 反灌到外部充电器输入。
+
+更完整的诊断拓扑包含 `SYS_5V` 电源 OR-ing，需要 3 颗 SS34：
 
 ```mermaid
 flowchart LR
@@ -200,6 +214,8 @@ flowchart LR
 ```
 
 原因：不插外部电源时，平板作为 USB Host 必须能从 `Tab_A9_VBUS` 给 ESP32 供电。若 ESP32 只接外部 `VBUS_IN`，则无法验证正常 OTG 使用场景。外部电源接入后，`VBUS_IN` 同时给 ESP32 供电，并通过隔离/限流路径尝试注入 `Tab_A9_VBUS` 给平板充电。
+
+SS34 接线方向：电流从无色端流向有色条纹端，条纹端是阴极。`外部 5V -> Tab_A9_VBUS` 时，条纹端朝 `Tab_A9_VBUS`。
 
 ## 关键设计判断
 
