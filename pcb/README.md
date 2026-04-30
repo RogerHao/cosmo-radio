@@ -94,6 +94,66 @@ flowchart LR
 
 不能把 CH224K、HUSB238 这类 PD Sink/诱骗芯片当成完整解法。它们主要解决“从充电器取电压”，不负责让平板同时保持数据 Host 和供电 Sink，也不负责完整 USB 数据/供电角色编排。
 
+### USB/充电可选方案重审
+
+问题本质：Tab A9 必须同时处于 **Data Host** 和 **Power Sink**。这不是普通 USB-C 默认角色，默认情况下 Host 往往也是供电 Source。要让平板一边 Host ESP32，一边被外部充电，需要角色拆分。
+
+| 方案 | 是否能集成到主 PCB | 风险 | 结论 |
+|------|-------------------|------|------|
+| 标准 USB-C PD charge-through | 能 | 高 | 正规方案，但不适合作为第一版主线 |
+| 平板特定的被动/半主动 OTG 充电 | 能 | 中高 | 便宜，可试，但依赖 Tab A9 实测 |
+| 拆解成品转接器并内置小板 | 不能算真正集成 | 低中 | 只能验证和救急，不是最终交付形态 |
+| BLE HID + USB-C 只负责充电 | 能 | 低 | 如果允许放弃有线 HID，这是最稳妥集成方案 |
+
+标准 PD charge-through 架构如下：
+
+```mermaid
+flowchart LR
+    charger[USB-C 充电器] --> sink[充电器侧 PD Sink 控制器]
+    sink --> path[5V 电源路径 / eFuse / DC-DC]
+    path --> tabletpd[平板侧 PD 控制器]
+    tabletpd --> tablet[Tab A9: Power Sink + Data Host]
+    tablet <-- USB2 D+/D- --> esp[ESP32-S3 USB HID Device]
+```
+
+这种方案需要：
+
+- 平板侧 Type-C/PD 控制器：处理 Power Role Swap / Data Role Swap，使 Tab A9 保持 Host，同时从本设备受电。
+- 充电器侧 PD Sink 控制器：从外部充电器取电。
+- 电源路径保护：eFuse、限流、反灌保护、ESD、VBUS 放电。
+- USB2 D+ / D- 路由：只有 ESP32 一个 USB 设备时不一定需要 USB Hub；若未来还有多个 USB 设备，才需要 Hub。
+- PD 控制器配置或固件：这是主要工程风险。
+
+低成本经验方案如下：
+
+```mermaid
+flowchart LR
+    charger[USB-C 充电器] --> vbus[限流 / 肖特基 / 电源开关]
+    vbus --> tablet[Tab A9 VBUS]
+    tablet <-- USB2 D+/D- --> esp[ESP32-S3 HID]
+    cc[CC 电阻 / 角色诱导] --> tablet
+```
+
+这种方案可以直接画在 PCB 上，成本低，但不是标准解法。它是否可用只取决于 Tab A9 的实际行为。若选它，必须先做洞洞板/小样验证：
+
+1. Tab A9 能稳定枚举 ESP32 HID。
+2. 插入充电器后 HID 不断连。
+3. 系统显示充电，电池电量能净增加。
+4. VBUS 无反灌，ESP32 和转接区无明显温升。
+5. 熄屏、亮屏、重插、开机后均能恢复。
+
+绕开 USB 的方案：
+
+```mermaid
+flowchart LR
+    charger[USB-C 充电器] --> pcb[主 PCB 电源输入]
+    pcb --> tablet[短线给 Tab A9 充电]
+    esp[ESP32-S3] <-- BLE HID --> tablet
+    esp --> io[旋钮 / 按钮 / LED / NFC]
+```
+
+这个方案最容易集成到主 PCB：USB-C 只做供电，输入端可以用 PD Sink/诱骗芯片，输出端按 Type-C Source 给平板 5V。数据改为 BLE HID。代价是固件和配对体验变化，不再是有线 HID。
+
 ## 关键设计判断
 
 ### 采用混合焊接方案
