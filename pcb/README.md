@@ -164,12 +164,15 @@ flowchart LR
 
 先做 **Tab A9 半主动 OTG 充电小样**，不要直接把标准 PD charge-through 塞进第一版主 PCB。
 
+2026-04-30 Manus 调研结论见 [Tab_A9_OTG_Charging_Feasibility_Report.md](research/Tab_A9_OTG_Charging_Feasibility_Report.md)。结论偏负面：Tab A9 SM-X110 的半主动方案成功率较低，但验证成本低，仍值得做一次小样排雷。
+
 原因：
 
 - 标准 PD charge-through 是正确方向，但需要 PD 控制器配置、PD 协议调试、电源路径保护和可能的协议分析仪。
 - V4 当前是技术验证 + 单套原型，合同价 ¥5,000，不能把主要预算压在 USB-C PD 协议栈调试上。
 - 如果 Tab A9 接受半主动方案，主 PCB 能低成本集成。
 - 如果 Tab A9 不接受半主动方案，再决定是否升级到标准 PD charge-through，或者重新评估产品成本。
+- LAVA 兼容性资料没有把基础版 Tab A9 SM-X110 列为明确支持设备；社区反馈也没有形成可靠正例。
 
 半主动小样必须验证：
 
