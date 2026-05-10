@@ -398,10 +398,19 @@ void app_main(void)
     input_handler_set_callback(on_input_event);
     input_handler_start();
 
-    // Initialize NFC handler (RC522 on SPI2)
-    ESP_ERROR_CHECK(nfc_handler_init());
-    nfc_handler_set_callback(on_nfc_tag);
-    ESP_ERROR_CHECK(nfc_handler_start());
+    // Initialize NFC handler (RC522 on SPI2). Optional peripheral — if the
+    // module is disconnected or unresponsive, log and continue so input/HID
+    // still work. Aborting here would leave the device in a reboot loop.
+    esp_err_t nfc_err = nfc_handler_init();
+    if (nfc_err == ESP_OK) {
+        nfc_handler_set_callback(on_nfc_tag);
+        nfc_err = nfc_handler_start();
+        if (nfc_err != ESP_OK) {
+            ESP_LOGW(TAG, "NFC start failed (0x%x) — continuing without NFC", nfc_err);
+        }
+    } else {
+        ESP_LOGW(TAG, "NFC init failed (0x%x) — continuing without NFC", nfc_err);
+    }
 
     // Brief startup indication
     led_indicator_green();

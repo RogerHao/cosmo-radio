@@ -159,6 +159,7 @@ Three-circle layout matching physical mask. Transfer to device and open in brows
 
 - ~~HID Key Report 无多键支持~~：2026-05-08 已用 `s_pressed_keys[6]` + `s_hid_mutex` 重构 (`main/tusb_hid_example_main.c`)。input + NFC 两条 task 现在通过同一把锁串行化报告提交，按住 F1 + 转旋钮等组合能正确发出。
 - ~~sdkconfig 仍是 V3 4MB 配置~~：2026-05-08 升级为 N16R8 (16MB QIO flash + 8MB Octal PSRAM @ 80MHz)。bootloader 不再警告 size mismatch；PSRAM 启用后 heap 可在大 buffer 场景自动外溢到 SPIRAM。
+- ~~NFC 模块未接 / 无响应导致整机 reboot loop~~：2026-05-10 修复。`nfc_handler_init/start` 不再用 `ESP_ERROR_CHECK` 包裹，失败时只 `ESP_LOGW` 并继续，旋钮/按钮/HID 在裸板（无 RC522）场景照常工作。**约束**：NFC 是可选外设，新增外设时考虑同样的"失败降级"策略；只对"系统级别不可恢复"的失败用 `ESP_ERROR_CHECK`（mutex 创建、TinyUSB 安装等）。
 
 ## Documentation Structure
 

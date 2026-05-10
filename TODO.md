@@ -119,6 +119,7 @@
 - [x] CLAUDE.md GPIO 分配表确认 ✅ 2026-05-06
 - [x] `sdkconfig.defaults` 更新：N16R8 16MB flash + octal PSRAM ✅ 2026-05-08
 - [x] HID Key Report 多键并发支持（`pressed_keys[6]` 状态数组 + mutex，消除 NFC 字符串注入与用户按键的竞态） ✅ 2026-05-08
+- [x] NFC 启动失败容错：`nfc_handler_init/start` 失败时只 warning 不 abort，裸板（无 RC522）演示不再 reboot loop ✅ 2026-05-10
 - [ ] NFC SPI 时钟从 1MHz 拉回 5MHz（需 PCB 焊好后验证，飞线版受 RF 噪声干扰）
 
 ### 旋钮与协议
