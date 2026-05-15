@@ -158,3 +158,4 @@ idf.py -p /dev/cu.usbmodem* flash monitor  # 烧录并监控
 - [项目主文档](docs/project/cosmoradio-yangweile-customized-hardware.md)
 - [USB 接口方案](docs/hardware/usb.md)
 - [NFC 模块方案](docs/hardware/nfc.md)
+- [OTG 一分二适配器（内置子板）](docs/hardware/otg-adapter.md)
