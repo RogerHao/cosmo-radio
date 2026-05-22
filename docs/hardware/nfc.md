@@ -37,32 +37,29 @@
 - Amiibo 标准标签，量产最大、价格最低（¥0.3 — ¥1/片）
 - 如果只用 UID 识别不写数据，NTAG213 也够用
 
-### 1.3 接线 (PCB J4 连接器 — 8P JST-XH, **PCB 右侧**)
+### 1.3 接线 (NFC 8P 端子 — JST-XH, **PCB 右侧底**)
 
-J4 在 PCB 上的物理位置：**用户右侧**（NFC 的 SPI 信号 GPIO 4/5/6/7/15/16 都在 DevKitC 的右列）。与 RC522 mini (MF522-MINI) 模块的 8-pin 排针**物理顺序一一对应**，8P 端子线直接压接即可，无需交叉或空线。
+NFC 8P 端子在 PCB 上的物理位置：**用户右侧底部**。与 RC522 mini (MF522-MINI) 模块的 8-pin 排针**物理顺序一一对应**，8P 端子线直接压接即可，无需交叉或空线。
 
 > 引脚顺序来源：zave 旗舰店商品详情图实拍丝印，从排针第 1 脚到第 8 脚。
 >
 > ![RC522 mini 引脚定义与原理图](../assets/rc522-mini-pinout-and-schematic.png)
 
-| Pin | 模块丝印 | 信号 | ESP32-S3 GPIO | SPI 总线 | 说明 |
-|-----|---------|------|--------------|----------|------|
-| 1 | SDA | CS (片选) | GPIO16 | SPI2 (软件 CS) | 软件控制，低有效 |
-| 2 | SCK | SPI 时钟 | GPIO15 | SPI2 CLK | |
-| 3 | MOSI | 主→从数据 | GPIO7 | SPI2 MOSI | |
-| 4 | MISO | 从→主数据 | GPIO6 | SPI2 MISO | |
-| 5 | IRQ | 中断请求 | GPIO5 | — | 低有效，固件未使用，仅接线预留 |
-| 6 | GND | 地 | GND | — | |
-| 7 | RST | 复位 | GPIO4 | — | 低有效 |
-| 8 | 3V3 | VCC | 3V3 | — | 模块供电 |
+| Pin | 模块丝印 | 信号 | SPI 总线 | 说明 |
+|-----|---------|------|---------|------|
+| 1 | SDA  | CS (片选) | SPI2 (软件 CS) | 软件控制，低有效 |
+| 2 | SCK  | SPI 时钟  | SPI2 CLK | |
+| 3 | MOSI | 主→从数据 | SPI2 MOSI | |
+| 4 | MISO | 从→主数据 | SPI2 MISO | |
+| 5 | IRQ  | 中断请求  | — | 低有效，固件未使用，仅接线预留 |
+| 6 | GND  | 地       | — | |
+| 7 | RST  | 复位     | — | 低有效 |
+| 8 | 3V3  | VCC      | — | 模块供电 |
 
-使用 SPI2 (FSPI) 硬件 SPI 总线，信号走 GPIO Matrix。RC522 工作频率 ~8 MHz，远低于 GPIO Matrix 上限（80 MHz），信号完整性无压力。
+> 各信号对应的 GPIO 号、连接器编号 / 物理位置，见 CLAUDE.md "GPIO Pin Assignments"。
 
-> **GPIO 分配演进**：
-> - 最初：GPIO 34-37（FSPI IO MUX 直连）→ ❌ 撞到 N16R8 内部 octal PSRAM
-> - 中间：GPIO 4/5/6/7（SCK/MISO/MOSI/CS）+ 15/16（RST/IRQ）→ 信号端连续，但飞线时 8P 排线需在板上转圈
-> - **当前（2026-05-06 实焊定稿）**：把整段顺序"翻过来"——RST→4 / IRQ→5 / MISO→6 / MOSI→7 / SCK→15 / CS→16，让 J4 连接器引脚和 DevKitC 排针走向一致，飞线无交叉
->
+使用 SPI2 (FSPI) 硬件 SPI 总线，信号走 GPIO Matrix（不能用 FSPI IO MUX 直连，因为那段引脚在 N16R8 内部 octal PSRAM 占用范围内）。RC522 工作频率 ~8 MHz，远低于 GPIO Matrix 上限（80 MHz），信号完整性无压力。
+
 > **IRQ 引脚说明**：MFRC522 检测到标签进入射频场时拉低 IRQ。当前 `abobija/rc522` 库采用 SPI 轮询模式，不依赖 IRQ，但保留接线方便未来切换中断驱动模式以降低 CPU 占用。
 >
 > **注意**：模块丝印 RET 实际为 RST（复位），系厂商丝印错误。
@@ -71,7 +68,7 @@ J4 在 PCB 上的物理位置：**用户右侧**（NFC 的 SPI 信号 GPIO 4/5/6
 
 RC522 天线安装在**外壳顶部模块内侧**（朝上），用户将标签物品放置在收音机顶部。
 
-> **双 NFC 方案备选**：若确认 2 个 NFC，一个放顶部模块左侧、一个放右侧。第二个 RC522 需要独立 CS 引脚（从 Reserved GPIO 11-18 分配），共享 FSPI 总线的 SCK/MOSI/MISO。RST 和 IRQ 也各需独立 GPIO。总计额外占用 3 个 GPIO（CS + RST + IRQ）。
+> **双 NFC 方案备选**：若确认 2 个 NFC，一个放顶部模块左侧、一个放右侧。第二个 RC522 需要独立 CS 引脚（从 CLAUDE.md "Reserved" 列表挑），共享 FSPI 总线的 SCK/MOSI/MISO；RST 和 IRQ 也各需独立 GPIO。总计额外占用 3 个 GPIO（CS + RST + IRQ）。
 
 关键约束：
 - **PLA/PETG 对 13.56 MHz 磁场透明** — 2mm 壁厚几乎无衰减，读取距离不受影响
@@ -357,7 +354,7 @@ void on_nfc_event(const nfc_event_t *event) {
 | 2 | 实现 `nfc_reader.c/h` — SPI 初始化 + UID 读取 | RC522 模块到货 |
 | 3 | 实现 `hid_type_string()` — ASCII → HID keycode 查表 + 逐字符发送 | 无 |
 | 4 | 集成到 `tusb_hid_example_main.c` — 注册回调 + mutex | 步骤 2, 3 |
-| 5 | PCB J4 连接器焊接 + 飞线测试 | PCB 到货 |
+| 5 | PCB NFC 端子焊接 + 飞线测试 | PCB 到货 |
 | 6 | 读取距离测试（穿透 2mm PLA） | 步骤 2 + 外壳样件 |
 | 7 | 安卓端字符串解析 + 映射表 | 步骤 4 |
 | 8 | 端到端联调：标签 → ESP32 → HID → 平板 → 动作 | 全部 |

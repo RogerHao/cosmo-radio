@@ -50,46 +50,60 @@ cosmo-radio/                       # 项目根 = ESP-IDF 项目
 └── CMakeLists.txt
 ```
 
-## GPIO Pin Assignments (V4 — ESP32-S3 DevKitC N16R8)
+## GPIO Pin Assignments (V4 PCB r1.0 — ESP32-S3 DevKitC N16R8)
 
-> **GPIO 终版（2026-05-06 飞线定稿，2026-05-18 PCB Plan v2 复核）**——下方"位置"列指 **PCB 用户视角**（用户俯视，OTG USB-C 朝外/朝后；详见 [`pcb/asset/ESP32-S3-DevKitC-N16R8.png`](pcb/asset/ESP32-S3-DevKitC-N16R8.png) + Plan v2 物理列分布表）。
+> **本节是项目里所有 GPIO 信息的唯一来源**（PCB 物理事实）。下游文档只引用、不复述具体数字。
+> **GPIO 终版（2026-05-22 PCB r1.0 实焊定稿）**——飞线 (2026-05-06) → Plan v2 KiCad (2026-05-18) → **JLCEDA P1 手绘打板 + 实焊验证 (2026-05-22)**。
 > ⚠️ N16R8 = 8MB **octal** PSRAM — GPIO 26-37 全段被内部 octal SPI flash + PSRAM 占用，不可使用。
 
-| Function | GPIO | Connector | PCB 位置 | Notes |
-|----------|------|-----------|----------|-------|
-| Action Button | 1 | J3 (2P) | **PCB 左侧靠前** | Kailh BOX, press = GND, internal pull-up |
-| EC11-L (用户左旋钮) A | 42 | J1 (5P) | **PCB 左侧中段** | 外加 10kΩ + 10nF RC 去抖 |
-| EC11-L B | 41 | J1 (5P) | PCB 左侧中段 | 外加 10kΩ + 10nF RC 去抖 |
-| EC11-L SW | 40 | J1 (5P) | PCB 左侧中段 | internal pull-up |
-| EC11-R (用户右旋钮) A | 17 | J2 (5P) | **PCB 右侧中段** | 外加 10kΩ + 10nF RC 去抖 |
-| EC11-R B | 18 | J2 (5P) | PCB 右侧中段 | 外加 10kΩ + 10nF RC 去抖 |
-| EC11-R SW | 8 | J2 (5P) | PCB 右侧中段 | internal pull-up |
-| RC522 NFC RST | 4 | J4 (8P) | **PCB 右侧** | low-active |
-| RC522 NFC IRQ | 5 | J4 (8P) | PCB 右侧 | low-active, 当前固件未使用，仅接线预留 |
-| RC522 NFC MISO | 6 | J4 (8P) | PCB 右侧 | SPI2 (FSPI) via GPIO Matrix |
-| RC522 NFC MOSI | 7 | J4 (8P) | PCB 右侧 | SPI2 (FSPI) via GPIO Matrix |
-| RC522 NFC SCK | 15 | J4 (8P) | PCB 右侧 | SPI2 (FSPI) via GPIO Matrix |
-| RC522 NFC CS (SDA) | 16 | J4 (8P) | PCB 右侧 | software-driven |
-| USB D- | 19 | J5 (4P) | **PCB 左侧靠后**（near USB-C 端）| OTG dongle → J5 → DevKitC 排针 GPIO19 |
-| USB D+ | 20 | J5 (4P) | PCB 左侧靠后 | OTG dongle → J5 → DevKitC 排针 GPIO20 |
-| Onboard RGB LED | 48 | DevKitC 板载 | — | WS2812B 板载，不外接 LED |
-| Reserved (free) | 2, 9, 10, 11, 12, 13, 14, 38, 39, 47 | — | — | 扩展可用 |
-| ⚠️ Strapping | 0 (BOOT), 3, 45, 46 | — | — | 做输入需保证 boot 时电平不被强拉 |
-| ⚠️ UART0 | 43 (TX), 44 (RX) | — | — | 烧录/monitor 占用，不要做关键输入 |
-| 🔒 Octal PSRAM | 26-37 | — | — | 内部使用，不可分配 |
+| GPIO | Schematic Net | Connector (PCB r1.0) | Notes |
+|------|---------------|---------------------|-------|
+| 1  | BTN          | J1 pin 1 (2P) | Kailh BOX action button, internal pull-up |
+| 42 | EC11-L-A     | J3 pin 1 (5P) | 10kΩ pull-up + 10nF to GND (R1+C1) |
+| 41 | EC11-L-B     | J3 pin 3      | 10kΩ pull-up + 10nF to GND (R2+C2) |
+| 40 | EC11-L-SW    | J3 pin 5      | internal pull-up |
+| 17 | EC11-R-A     | J4 pin 5 (5P) | ⚠ 固件角色重指派，见下方 walkaround |
+| 18 | EC11-R-B     | J4 pin 3      | ⚠ 同上 |
+| 8  | EC11-R-SW    | J4 pin 1      | ⚠ 同上 |
+| 16 | NFC_SDA (CS) | J2 pin 1 (8P) | software-driven CS |
+| 15 | NFC_SCK      | J2 pin 2      | SPI2 (FSPI) via GPIO Matrix |
+| 7  | NFC_MOSI     | J2 pin 3      | SPI2 via GPIO Matrix |
+| 6  | NFC_MISO     | J2 pin 4      | SPI2 via GPIO Matrix |
+| 5  | NFC_IRQ      | J2 pin 5      | low-active, 接线预留，固件未用 |
+| 4  | NFC_RST      | J2 pin 8      | low-active |
+| 19 | USB_DM       | J5 (4P)       | OTG dongle D-, 同时是 DevKitC native USB-C 上的 D- |
+| 20 | USB_DP       | J5 (4P)       | OTG dongle D+ |
+| 48 | (board RGB)  | DevKitC 板载  | WS2812B onboard，不外接 |
+| 2, 9, 10, 11, 12, 13, 14, 38, 39, 47 | — | — | Reserved / 可扩展 |
+| 0 (BOOT), 3, 45, 46 | — | — | ⚠ Strapping — 输入需确保 boot 时电平不被强拉 |
+| 43 (TX), 44 (RX)   | — | — | ⚠ UART0 — 烧录/monitor 占用 |
+| 26-37              | — | — | 🔒 Octal PSRAM 内部占用 |
+
+PCB r1.0 连接器物理位置（用户俯视）：
+- **PCB 顶部**（近 USB-C 端）: J5
+- **PCB 左侧**: J1（靠前）、J3（中段）
+- **PCB 右侧**: J4（中段）、J2（底部）
 
 > ⚠️ **运行时不要插 DevKitC 板载 OTG USB-C**：GPIO19/20 同时连到了排针（→ J5 → dongle 注入 VBUS）和 native USB-C 焊盘，外部插 USB-C 会跟 dongle 注入冲突。固件烧录走 DevKitC **UART USB-C**（不是 OTG USB-C）。PCB 顶丝印有 "OTG USB-C: DO NOT PLUG" 警示。
 
+### PCB r1.0 EC11-R 接线 walkaround（2026-05-22）
+
+P1.epro2 原理图把 J3 (EC11-L) 和 J4 (EC11-R) 的引脚顺序画反了——J3 = `[A, GND, B, GND, SW]`，J4 = `[SW, GND, B, GND, A]`。一根 5P 端子线只能压一种顺序，因此装上 J4 时**物理 EC11 的 A/B/SW 三根线相对网络名整体错位**。
+
+固件在 `main/input_handler.c` 用 `#define` 把 `GPIO_ENC2_A` / `_B` / `_SW` 重新指派到正确的 GPIO 上（**具体哪个 GPIO 扮演哪个角色，以那个 .c 文件为准**），同时把 A/B 互换一次让两个旋钮"向内拨"时指针方向一致。**硬件不用改、固件烧好即可。**
+
+➡️ 长期修复（PCB r1.1）：把 J4 改成跟 J3 对称的 `[A, GND, B, GND, SW]`，去掉固件的 walkaround。
+
 ### 关于"用户左/右"的语义
 
-GPIO 表里 "EC11-L" 指**用户视角的左旋钮**（用户左手摸到的那个）。在飞线版上，左旋钮的 A/B/SW 实际接到 GPIO 42/41/40——这跟 DevKitC datasheet "left column" 的关系取决于安装朝向（详见 Plan v2 "DevKitC 物理引脚分布" 章节）。固件代码里 `ENC1` 别名即 EC11-L，`ENC2` 即 EC11-R。
+GPIO 表里 "EC11-L" 指**用户视角的左旋钮**（用户左手摸到的那个）。固件代码里 `ENC1` 别名即 EC11-L，`ENC2` 即 EC11-R。
 
 ### EC11 接线说明（V4）
 
-EC11 是纯机械开关，**不需要 VCC**，3 个 IO + GND 即可工作（C / SW2 都接 GND，A / B / SW1 接 GPIO，靠 ESP32 内部上拉拉高）。
-- **飞线阶段**：仅靠内部 ~45kΩ 上拉，旋钮稳定性"能用但不准"
-- **PCB V4 版**：A/B 信号线外加 **10kΩ 上拉 + 10nF 对地**（RC 时间常数 100µs），既增强边沿陡度又抑制机械抖动；SW 仍仅靠内部上拉
-- 4 个 R (R1-R4) + 4 个 C (C1-C4) 全部 0805 贴片，紧贴 J1/J2 摆放
+EC11 是纯机械开关，**不需要 VCC**，3 个 IO + GND 即可工作（C / SW2 都接 GND，A / B / SW1 接 GPIO）。
+- A/B 信号线外加 **10kΩ 上拉 + 10nF 对地**（RC 时间常数 100µs），既增强边沿陡度又抑制机械抖动
+- SW 仅靠内部上拉
+- 4 个 R (R1-R4) + 4 个 C (C1-C4) 全部 0805 贴片，紧贴 J3/J4 摆放
 
 ### V3 GPIO (SuperMini — deprecated, see git history)
 
@@ -128,7 +142,7 @@ EC11 是纯机械开关，**不需要 VCC**，3 个 IO + GND 即可工作（C / 
 - **Power**: 外部充电器 → 一分二 OTG + 充电线材内置子板 (YK16-09E V1) → 平板（被动 SS34 注入方案已实测失败，弃用）
 - **PCB**: Custom carrier board, **100×100mm 双面** (JLCPCB 免费打样), XH2.54 connectors
 - **DevKitC 安装**: **两条 1×22 单排母**（不是 2×22 双排，单排好焊好对齐），间距 22.86mm
-- **Connectors**: J1 (EC11-L 5P, **PCB 左侧中段**), J2 (EC11-R 5P, **PCB 右侧中段**), J3 (Action Button 2P, **PCB 左侧靠前**), J4 (NFC RC522 8P, **PCB 右侧**), J5 (OTG dongle USB 4P, **PCB 左侧靠后**)
+- **Connectors** (PCB r1.0 编号): J1 (Action Button 2P, **PCB 左侧靠前**), J2 (NFC RC522 8P, **PCB 右侧底**), J3 (EC11-L 5P, **PCB 左侧中段**), J4 (EC11-R 5P, **PCB 右侧中段**), J5 (OTG dongle USB 4P, **PCB 顶部**)
 - **No external LED**: 取消外接 WS2812B，使用 DevKitC 板载 GPIO48 RGB LED 做调试指示
 - **被动元件**: 4× 10kΩ 0805 + 4× 10nF 0805（EC11 A/B 信号 RC 去抖），其余零无源件
 - **Screws**: M2.5×10 平头内六角 (flat head hex socket)
@@ -169,6 +183,7 @@ Three-circle layout matching physical mask. Transfer to device and open in brows
 
 ### Resolved (history)
 
+- ~~EC11-R 右旋钮方向异常 (PCB r1.0)~~：2026-05-22 固件 walkaround 修复。打板后右旋钮表现为"任意方向转都是 CW、按下变 CCW"——根因是 P1.epro2 把 J4 的引脚顺序画成跟 J3 镜像（J3=`A,GND,B,GND,SW`，J4=`SW,GND,B,GND,A`），单一线序在 J4 上把物理 A 接到 EC11-R-SW net、SW 接到 EC11-R-A net。固件在 `main/input_handler.c` 重新指派 `GPIO_ENC2_A/B/SW`（18/8/17）并 swap A↔B 让左右旋钮"向内拨"方向一致。PCB r1.1 应把 J4 改回对称排列再去掉 walkaround。
 - ~~HID Key Report 无多键支持~~：2026-05-08 已用 `s_pressed_keys[6]` + `s_hid_mutex` 重构 (`main/tusb_hid_example_main.c`)。input + NFC 两条 task 现在通过同一把锁串行化报告提交，按住 F1 + 转旋钮等组合能正确发出。
 - ~~sdkconfig 仍是 V3 4MB 配置~~：2026-05-08 升级为 N16R8 (16MB QIO flash + 8MB Octal PSRAM @ 80MHz)。bootloader 不再警告 size mismatch；PSRAM 启用后 heap 可在大 buffer 场景自动外溢到 SPIRAM。
 - ~~NFC 模块未接 / 无响应导致整机 reboot loop~~：2026-05-10 修复。`nfc_handler_init/start` 不再用 `ESP_ERROR_CHECK` 包裹，失败时只 `ESP_LOGW` 并继续，旋钮/按钮/HID 在裸板（无 RC522）场景照常工作。**约束**：NFC 是可选外设，新增外设时考虑同样的"失败降级"策略；只对"系统级别不可恢复"的失败用 `ESP_ERROR_CHECK`（mutex 创建、TinyUSB 安装等）。

@@ -21,14 +21,15 @@ static const char *TAG = "NFC";
 // RF field, which would otherwise type the same string multiple times.
 #define NFC_DEDUP_WINDOW_US (1500 * 1000)
 
-// V4 GPIO assignments — see CLAUDE.md "GPIO Pin Assignments" (J4 left-top 8P).
+// Pin map: see CLAUDE.md "GPIO Pin Assignments" for net names + PCB position.
+// IRQ (GPIO 5) is wired but not used here — polling mode handles edge detection
+// inside the rc522 driver.
 #define NFC_SPI_HOST    SPI2_HOST
 #define NFC_GPIO_RST    4
 #define NFC_GPIO_MISO   6
 #define NFC_GPIO_MOSI   7
 #define NFC_GPIO_SCLK   15
-#define NFC_GPIO_SDA    16  // CS, software-driven
-// IRQ on GPIO5 is wired but not used in polling mode (handled by rc522 lib internally).
+#define NFC_GPIO_SDA    16
 
 static rc522_spi_config_t s_driver_config = {
     .host_id = NFC_SPI_HOST,

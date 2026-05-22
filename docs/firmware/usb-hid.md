@@ -24,11 +24,13 @@ V1/V2 BLE HID 方案已删除（见 git 历史）；V3 SuperMini → V4 DevKitC 
 
 | 输入 | HID 按键 |
 |------|---------|
-| Action Button (GPIO1) 按 | Enter |
-| EC11-L (GPIO 42/41/40) 旋转 / 按 | ↑/↓ / F1 |
-| EC11-R (GPIO 17/18/8) 旋转 / 按 | →/← / F2 |
+| Action Button 按 | Enter |
+| EC11-L 旋转 / 按 | ↑/↓ / F1 |
+| EC11-R 旋转 / 按 | →/← / F2 |
 | NFC 卡 (NDEF Text) | `<payload>\n` |
 | NFC 卡 (UID 兜底) | `NFC:<UID_HEX>\n` |
+
+> GPIO 号 / 连接器映射见 CLAUDE.md "GPIO Pin Assignments"，本文不重复。
 
 ## LED 行为
 
@@ -49,7 +51,7 @@ idf.py build
 idf.py -p /dev/cu.usbmodem* flash monitor  # 走 DevKitC UART USB-C 烧录，不走 OTG USB-C
 ```
 
-> ⚠️ **烧录走 UART USB-C，不要走 OTG USB-C** — V4 PCB 设计下 GPIO19/20 连到 J5 接 dongle 注入 VBUS，外部插 OTG USB-C 会冲突。
+> ⚠️ **烧录走 UART USB-C，不要走 OTG USB-C** — 板上 USB D+/D- 同时连到 J5 (dongle) 和 native USB-C 焊盘，外部插会冲突。详见 CLAUDE.md。
 
 ## 已知技术债
 

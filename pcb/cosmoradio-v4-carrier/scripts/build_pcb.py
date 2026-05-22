@@ -76,15 +76,15 @@ PLACEMENT = {
                 x=73.75, y=92.0, rot=180, value="NFC"),
     # rot=180: pin row 水平(-X), pin 1 at x=73.75, pin 8 at x=56.25. 中心 x=65.
 
-    # ---- J1 EC11-L 左中, latch 朝 LEFT (-X) ----
-    # rot=270: pin row 竖直(-Y from pin 1), pin 1 at (8, 55), pin 5 at (8, 45)
+    # ---- J1 EC11-L 左中, latch 朝外侧 ----
+    # rot=90: EC11 母座相对上一版旋转 180°, pin 1 at (8, 55), pin 5 at (8, 45)
     "J1":  dict(lib="Connector_JST", fp="JST_XH_B5B-XH-A_1x05_P2.50mm_Vertical",
-                x=8.0, y=55.0, rot=270, value="EC11-L"),
+                x=8.0, y=55.0, rot=90, value="EC11-L"),
 
-    # ---- J2 EC11-R 右中, latch 朝 RIGHT (+X) ----
-    # rot=90: pin row 竖直(+Y from pin 1), pin 1 at (92, 45), pin 5 at (92, 55), 与 J1 同 Y 范围 (45-55) 镜像
+    # ---- J2 EC11-R 右中, latch 朝外侧 ----
+    # rot=270: EC11 母座相对上一版旋转 180°, pin 1 at (92, 45), pin 5 at (92, 55)
     "J2":  dict(lib="Connector_JST", fp="JST_XH_B5B-XH-A_1x05_P2.50mm_Vertical",
-                x=92.0, y=45.0, rot=90, value="EC11-R"),
+                x=92.0, y=45.0, rot=270, value="EC11-R"),
 
     # ---- J3 BTN 左下, latch 朝 DOWN ----
     "J3":  dict(lib="Connector_JST", fp="JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical",
@@ -239,12 +239,17 @@ def main() -> int:
     add_silk("DO NOT PLUG", 14.0, 20.0, 1.0)
     add_silk("(use UART)",  16.0, 23.0, 0.9)
 
-    # ---- 连接器标签 ----
+    # ---- 连接器标签 + pin 顺序 ----
     add_silk("J5 USB",    44.0, 3.0,  0.9)          # J5 上方边缘
-    add_silk("J1 EC11-L", 4.0,  40.0, 0.9)          # J1 上方
-    add_silk("J2 EC11-R", 84.0, 40.0, 0.9)          # J2 上方
+    add_silk("5V D- D+ G", 42.0, 8.5, 0.8)
+    add_silk("J1 EC11-L", 10.0, 40.0, 0.9)          # J1 上方
+    add_silk("SW G A G B", 14.0, 68.0, 0.8)
+    add_silk("J2 EC11-R", 73.0, 40.0, 0.9)          # J2 上方
+    add_silk("SW G A G B", 76.0, 68.0, 0.8)
     add_silk("J3 BTN",    13.0, 86.0, 0.9)          # J3 上方
+    add_silk("SIG G",      22.0, 88.5, 0.8)
     add_silk("J4 NFC",    55.0, 86.0, 0.9)          # J4 上方
+    add_silk("CS SCK MOSI MISO IRQ G RST 3V3", 41.0, 88.5, 0.8)
 
     board.Save(str(PCB_PATH))
     print(f"\n✅ saved {PCB_PATH}")

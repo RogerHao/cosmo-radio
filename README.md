@@ -135,21 +135,11 @@ idf.py build                               # 构建
 idf.py -p /dev/cu.usbmodem* flash monitor  # 烧录并监控
 ```
 
-## GPIO 引脚分配（V4 终版）
+## GPIO 引脚分配
 
-> N16R8 = 8MB octal PSRAM，**GPIO 26-37 全段被内部 octal SPI flash + PSRAM 占用，不可使用**。完整表和"PCB 位置"列见 [CLAUDE.md](CLAUDE.md) "GPIO Pin Assignments"。
+完整 GPIO → net → 连接器 映射、PCB 物理位置、PCB r1.0 EC11-R 接线 walkaround 全部见 [CLAUDE.md "GPIO Pin Assignments"](CLAUDE.md#gpio-pin-assignments-v4-pcb-r10--esp32-s3-devkitc-n16r8)。固件里 `main/input_handler.c` 和 `main/nfc_handler.c` 的 `#define` 是各自的 GPIO 角色权威源。
 
-| 功能 | GPIO | 连接器 (PCB 位置) |
-|------|------|--------|
-| EC11-L (用户左旋钮) A/B/SW | **42 / 41 / 40** | J1 (PCB 左侧中段, 5P) |
-| EC11-R (用户右旋钮) A/B/SW | **17 / 18 / 8** | J2 (PCB 右侧中段, 5P) |
-| Action Button | 1 | J3 (PCB 左侧靠前, 2P) |
-| RC522 NFC RST/IRQ/MISO/MOSI/SCK/CS | 4 / 5 / 6 / 7 / 15 / 16 | J4 (PCB 右侧, 8P, SPI2 via GPIO Matrix) |
-| OTG USB D-/D+ | 19 / 20 | J5 (PCB 左侧靠后, 4P) → dongle USB |
-| 板载 RGB LED | 48 | DevKitC 板载，无外接 LED |
-
-> EC11 A/B 信号 PCB 上各加 10kΩ 上拉 + 10nF 对地 RC 去抖。
-> V3 引脚分配（SuperMini）见 git 历史。
+> 简易记忆：左旋钮 → J3，右旋钮 → J4 (引脚顺序跟 J3 镜像)，BTN → J1，NFC → J2，USB → J5。V3 引脚分配（SuperMini）见 git 历史。
 
 ## 文档索引
 

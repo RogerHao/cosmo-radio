@@ -10,7 +10,7 @@
 
 电气、固件、NFC 协议在万能板飞线版上**端到端跑通**：
 
-- ESP32-S3 DevKitC N16R8 主控 + 4 路 XH2.54 连接器（J1/J2 EC11、J3 按钮、J4 NFC）
+- ESP32-S3 DevKitC N16R8 主控 + 4 路 XH2.54 连接器（双 EC11、Action Button、NFC）（注：飞线版当时 J 编号跟 r1.0 PCB 不同，详见 CLAUDE.md）
 - 拆解一分二 OTG + 充电线材内置子板，平板 USB Host + 充电同时工作
 - 固件 V4 GPIO 全部跑通：Action Button、双 EC11 旋转 + 按压、板载 RGB
 - NFC 链路：RC522 SPI（1MHz）→ 读 NTAG215 UID + NDEF Text Record → HID 键入 `#<payload>\n`
@@ -28,7 +28,22 @@
 | 固件 | Claude | 彻底优化升级到 V4（A 类技术债清理 + 代码整理） |
 | 结构 | Dehong | NFC 模块 + 长按条按钮模块结构设计 + 历史结构改进 |
 
-✅ **2026-05-18 PCB Plan v2 锁定**：USB 互联走线方案确定为"OTG dongle 拆 USB-A → 4 飞线 → J5 4P → DevKitC 排针 GPIO19/20"，固件不需 revert L/R swap，详见 `~/.claude/plans/iridescent-snuggling-planet.md`。
+✅ **2026-05-18 PCB Plan v2 锁定**：USB 互联走线方案确定为"OTG dongle 拆 USB-A → 4 飞线 → J5 4P → DevKitC 排针"，详见 `~/.claude/plans/iridescent-snuggling-planet.md`。
+
+---
+
+## 2026-05-22 PCB r1.0 实焊 + 固件验证完成 ✅
+
+最终走 JLCEDA Pro 手绘的 `~/Downloads/P1.epro2`，**不是**仓库里的 KiCad `pcb/cosmoradio-v4-carrier/`（那是 Plan v2 的备选，未使用，保留作历史参考）。
+
+- ✅ PCB 打板 + 焊接 + DevKitC 插入 + JST 端子线压接
+- ✅ 双 EC11 + Action Button + NFC + USB HID 全链路验证通过（两台板子并排测）
+- ✅ EC11-R 右旋钮初次表现异常（任意方向都是 CW、按下变 CCW）——根因：J4 引脚顺序在原理图里画成跟 J3 镜像，物理 EC11 端子线序错位
+- ✅ 固件层 walkaround：`main/input_handler.c` 重新指派 `GPIO_ENC2_A/B/SW`，并 swap A↔B 让两个旋钮"向内拨"方向一致——硬件不返工
+- 📌 PCB r1.1（未启动）：把 J4 改成跟 J3 对称的 `[A, GND, B, GND, SW]`，去掉固件 walkaround
+- 📌 顺便把原理图里几个标错的"GND/+5V"标签（H-L pin 1、H-R pin 1/pin 2）改正——这些 net 物理上不是电源，r1.0 是因 PCB 走线没真连才幸免
+
+详见 [CLAUDE.md "PCB r1.0 EC11-R 接线 walkaround"](CLAUDE.md#pcb-r10-ec11-r-接线-walkaround2026-05-22)。
 
 ---
 
@@ -52,20 +67,18 @@
 - [x] OTG 子板选型 (YK16-09E V1) ✅ 2026-05-06
 - [x] USB 走线方案确认（J5 4P → DevKitC 排针，无中间 USB-C 跳线）✅ 2026-05-18
 
-### PCB 载板设计 ✅ 2026-05-18 落版完成 (Phase 1-7)
+### PCB 载板设计 ✅ 2026-05-22 r1.0 实焊验证完成
+
+> 最终路径：JLCEDA Pro 手绘（`~/Downloads/P1.epro2`）。KiCad Plan v2 (`pcb/cosmoradio-v4-carrier/`) 是备选，**未使用**，保留作历史参考。
+
 - [x] DevKitC N16R8 排针间距确认（22.86mm = 9 × 2.54mm pitch）✅ 2026-05-18
 - [x] 用两条 1×22 单排母（不用 2×22 双排）✅ 2026-05-18
-- [x] 加 4× 10kΩ + 4× 10nF EC11 RC 去抖网络 ✅ 2026-05-18
-- [x] KiCad 原理图（circuit-synth Phase 2-3）：U1A/U1B + J1-J5 + R1-R4 + C1-C4 ✅
-- [x] PCB layout（pcbnew API Phase 4）：100×100mm 双面板，B-type 立式直插，latch 朝外 ✅
-- [x] Freerouting 自动布线 + DRC 0/0 ✅
-- [x] 出 Gerber zip + BOM + 渲染图 (Phase 7) ✅ `pcb/cosmoradio-v4-carrier/output/`
-- [x] EC11 端子线序按实物 SW-GND-A-GND-B (修正 v2 凭空 ABCDE 顺序错误) ✅ 2026-05-18
-- [x] U1A pin 2 = GND (修正 v2 误标 5V 的短路隐患) ✅ 2026-05-18
-- [x] 螺丝规格确认：M2.5×10 平头内六角 ✅
-- [ ] **JLCPCB 上传 zip 下单打样 (5 片免费打样)**
-- [ ] PCB 到货后焊接：2× 1×22 排母 + 5× B-type JST + 8× 0805 + 4× M2.5 螺孔
-- [ ] schematic PDF 手动连线修正 (circuit-synth ≥3-node 网塌网 bug 的可视化修复，不影响 Gerber)
+- [x] 加 EC11 RC 去抖网络（4× 10kΩ + 4× 10nF 0805）✅ 2026-05-18
+- [x] Plan v2 KiCad 备选方案（circuit-synth + pcbnew API + Freerouting，Gerber + BOM + 渲染图全套）✅ 2026-05-18 — 未上 JLCPCB，被 P1.epro2 替代
+- [x] JLCEDA Pro 手绘 r1.0 原理图 ✅
+- [x] r1.0 PCB 打样 + 焊接 ✅ 2026-05-22
+- [x] r1.0 双板并排功能验证 ✅ 2026-05-22
+- [ ] **PCB r1.1**：修正 J4 镜像、修正 H-L pin 1 / H-R pin 1·pin 2 的 GND/+5V 误标，并去掉固件 walkaround
 
 ### USB-C 板载集成评估 ✅ 2026-05-18 关闭 — OTG dongle 方案替代
 > ~~原方案 B：PCB 双 USB-C 座 + 被动 SS34 VBUS 注入~~ → 2026-04-30 实测失败（Tab A9 PD 协议不接受）
@@ -79,8 +92,8 @@
 - [x] **被动 SS34 注入实测**（2026-04-30）→ 失败，6P 转接板 + SS34 无法让 Tab A9 同时进入 Data Host + Power Sink，弃用为主线
 - [x] **采购一分二 OTG + 充电线材**（2026-05-06）→ 已购买多种型号，测试出一种比较理想的可作为内置子板基准
 - [x] **手工万能板原型集成**（2026-05-06，[图片](docs/assets/v4-handmade-prototype-2026-05-06.jpg)）→ ESP32-S3 DevKitC + 拆解后的一分二小板 + 5 路 XH2.54 连接器已焊出
-- [ ] 万能板上回归测试：HID 枚举 / 充电接入 / 电池电量净增 / 热稳定 2h
-- [ ] 根据万能板验证结果，更新 PCB Spec 和原理图
+- [x] 回归测试：HID 枚举 / 充电接入 / 旋钮 / 按钮 / NFC（PCB r1.0 上完成 2026-05-22）
+- [ ] 整机长时间热稳定 + 充电链路 2h 测试（需要 Tab A9 到货后做）
 
 ### 按钮机构
 > 选定方案：键盘轴 + 6.25U 卫星轴空格键，长度 ~10cm
@@ -113,7 +126,7 @@
 - [x] **设计 V4 引脚接线方案**（CLAUDE.md GPIO 表定稿，与万能板焊接一致） ✅ 2026-05-06
 - [x] SuperMini → DevKitC N16R8 GPIO 重映射（input_handler.c / led_indicator.c） ✅ 2026-05-06
 - [x] 新增 NFC SPI 模块（SPI2 GPIO Matrix，1MHz） ✅ 2026-05-07
-- [x] 新增按钮 + 双 EC11 SW 处理（GPIO1 / GPIO8 / GPIO40） ✅ 2026-05-06
+- [x] 新增按钮 + 双 EC11 SW 处理 ✅ 2026-05-06
 - [x] input_handler 扩展：NFC 事件 → `nfc_handler.c` 独立模块 + HID 字符串键入 ✅ 2026-05-07
 - [x] 万能板上烧录验证：旋钮 / 按钮 / NFC 全链路 ✅ 2026-05-07
 - [x] CLAUDE.md GPIO 分配表确认 ✅ 2026-05-06
