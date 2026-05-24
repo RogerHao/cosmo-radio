@@ -1,9 +1,10 @@
-# CosmoRadio V4 — PCB 载板规格 (v2.0)
+# CosmoRadio V4 — PCB 载板规格（r1.0 生产/装配 spec）
 
-> **版本**：v2.0（2026-05-18 整理，对应 PCB Plan v2）
+> **对应**：实焊验证通过的 r1.0 板（2026-05-22）。连接器定义、RC 网络、物理规格、装配/质检流程均以实物为准。
+> **设计源文件**：`pcb/cosmoradio-v4-jlceda/`（嘉立创EDA r1.0；制造文件导出清单见 `pcb/README.md`）。
 > **范围**：技术方案验证 + 单套原型制作；JLCPCB 免费打样 5 片
-> **设计文档**：详细执行步骤见 `~/.claude/plans/iridescent-snuggling-planet.md`
 > **GPIO 权威表**：`/CLAUDE.md` "GPIO Pin Assignments"
+> 注：本文是面向生产/装配的细化 spec；设计源与 r1.1 路线的权威说明见 `pcb/README.md`。
 
 ---
 
@@ -203,8 +204,8 @@ EC11-L B 端 ──┬──── 10kΩ ──── 3V3
 ### 生产流程
 
 ```
-KiCad 设计完成
-  → JLCPCB 下单（仅打板，不贴片）
+嘉立创EDA 设计完成（r1.0）
+  → 导出 Gerber → JLCPCB 下单（仅打板，不贴片）
   → 5 片裸板到货（国内 ~3-5 天）
 
 焊接元件（我们做，~15min/板）
@@ -231,8 +232,7 @@ KiCad 设计完成
 
 | 工具 | 用途 |
 |------|------|
-| JLCEDA Pro | PCB r1.0 实际使用的原理图 + layout 工具（源文件 `~/Downloads/P1.epro2`） |
-| KiCad 10+ | Plan v2 备选方案，保留在 `pcb/cosmoradio-v4-carrier/` 作历史参考 |
+| 嘉立创EDA专业版 v3.2.135+ | PCB r1.0 原理图 + layout 工具（源文件 `pcb/cosmoradio-v4-jlceda/cosmoradio-v4-r1.0.epro2`） |
 | JLCPCB | 打板下单 |
 | 万用表 | 通断测试 |
 | JST-XH 压线钳 | 预压端子线缆 |

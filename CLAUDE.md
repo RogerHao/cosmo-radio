@@ -154,9 +154,11 @@ EC11 是纯机械开关，**不需要 VCC**，3 个 IO + GND 即可工作（C / 
 
 ## PCB Design
 
-Carrier board designed in KiCad, manufactured by JLCPCB.
+Carrier board **hand-drawn in 嘉立创EDA专业版 (JLCEDA Pro), manufactured by JLCPCB** — r1.0 实焊验证通过 (2026-05-22). 设计源 + 制造导出清单见 `pcb/README.md`；验证版工程在 `pcb/cosmoradio-v4-jlceda/`。
+（注：早期 Plan v2 用 KiCad + circuit-synth 自动布线探索过，**未使用，已删除**，见 git 历史。）
 
-- Spec: `docs/project/CosmoRadio-V4-PCB-Spec.md`
+- Source: `pcb/cosmoradio-v4-jlceda/cosmoradio-v4-r1.0.epro2`
+- Spec (生产/装配): `docs/project/CosmoRadio-V4-PCB-Spec.md`
 - BOM: `docs/project/CosmoRadio-V4-BOM及报价分析.md`
 
 Key design decisions:
@@ -165,7 +167,6 @@ Key design decisions:
 - NFC uses SPI2 via GPIO Matrix (GPIO 4/5/6/7/15/16, not hardware-fixed FSPICLK pins — those are inside the octal PSRAM range)
 - EC11 A/B signal lines: external 10kΩ pull-up + 10nF RC debounce filter (τ=100µs) — eliminates the "not crisp one-detent-per-click" issue seen on breadboard with internal pull-ups only
 - OTG dongle (YK16-09E V1) integrated as internal sub-board: USB-A 母座 拆掉后 4 飞线 → J5 4P → DevKitC 排针 GPIO19/20 + 5V/GND
-- **Plan v2 详细方案**：`~/.claude/plans/iridescent-snuggling-planet.md`
 
 ## HID Input Test Tool
 

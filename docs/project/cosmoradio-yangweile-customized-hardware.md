@@ -8,7 +8,19 @@
 - **协作者**: Arthur（客户侧 CTO，硬件结构设计协助）
 - **产品**: CosmoRadio — 桌面"平行宇宙收音机"交互设备
 - **形态**: 安卓平板 + 3D 打印外壳 + ESP32 USB HID 控制器 + 旋钮/按钮
-- **状态**: 第四期已重启为技术方案验证 + 单套原型（2026-04-29 与 Arthur 达成协议）
+- **状态**: 第四期技术验证 + 单套原型 **已完成交付**（2026-05-22）
+
+---
+
+## 交付状态（2026-05-22 验证完成 ✅）
+
+V4 技术方案验证 + 单套原型已完成。PCB r1.0 实焊 + 双板并排功能验证通过，固件全链路（USB HID + 双 EC11 + Action Button + NFC）跑通，单套原型装配完成。
+
+- **核心交付**：[CosmoRadio-V4-技术验证报告.md](CosmoRadio-V4-技术验证报告.md)
+- **PCB 设计源**：`pcb/cosmoradio-v4-jlceda/`（嘉立创EDA r1.0，制造文件导出清单见 `pcb/README.md`）
+- **3D 模型**：`models/v4/`（外壳 + 结构件全套）
+- **内部成本核算**：[CosmoRadio-V4-项目成本核算.md](CosmoRadio-V4-项目成本核算.md)（不对客户交付）
+- **待回归**（post-delivery）：Action Button 手感 + 整机热稳定/充电链路，需新 Tab A9 到货后补做（原 R4 Pad 已损坏）。
 
 ---
 
@@ -161,5 +173,5 @@ R1-R3 的交付文档、BOM、技术文档已归档至 [archive-r1-r3/](archive-
 
 | 仓库 | 说明 |
 |------|------|
-| `/Users/dehonghao/code/cosmo-radio` | 固件代码（BLE HID + USB HID） |
-| `/Users/dehonghao/code/CosmoPager` | 嵌入式方案代码（已终止） |
+| `/Users/dehonghao/Projects/cosmo-radio` | 固件 + PCB + 模型 + 文档（USB HID；BLE HID 已删除，见 git 历史） |
+| `CosmoPager`（archived） | 嵌入式触屏方案，已终止 |
