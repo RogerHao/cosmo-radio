@@ -64,4 +64,4 @@ idf.py -p /dev/cu.usbmodem* flash monitor  # 走 DevKitC UART USB-C 烧录，不
 
 ## 硬件需求
 
-详见 [/CLAUDE.md](../../CLAUDE.md) "Hardware Target (V4)" + [/docs/project/CosmoRadio-V4-PCB-Spec.md](../project/CosmoRadio-V4-PCB-Spec.md)。
+详见 [/CLAUDE.md](../../CLAUDE.md) "Hardware Target (V4)" + [V4 硬件参考资料](../../project/v4/shared/硬件参考资料.md)。

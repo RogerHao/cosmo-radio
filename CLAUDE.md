@@ -12,7 +12,7 @@
 
 **客户**: 杨炜乐 / 上海噗噗噗教育科技有限公司。R1-R3 已交付（¥26,000 已结清）。R4 原 4+8 批量交付合同在 04/02 取消，04/29 与 Arthur 重启为 ¥5,000 技术验证 + 单套原型。
 
-**项目文档**: `docs/project/` — BOM、PCB Spec、项目主文档、R1-R3 归档
+**项目文档**: `project/` — BOM、PCB Spec、项目主文档、R1-R3 归档
 
 ## Current V4 Scope
 
@@ -43,7 +43,7 @@ idf.py fullclean                           # 清理构建
 cosmo-radio/                       # 项目根 = ESP-IDF 项目
 ├── main/
 │   ├── tusb_hid_example_main.c    # Entry point, USB HID + ASCII→HID encoder
-│   ├── input_handler.c/h          # GPIO interrupt-based input (button + 2 EC11)
+│   ├── input_handler.c/h          # GPIO interrupt + level-reconciled input (button + 2 EC11)
 │   ├── nfc_handler.c/h            # RC522 SPI scan + NDEF Text Record parser
 │   └── led_indicator.c/h          # Onboard WS2812 RGB control (GPIO48)
 ├── sdkconfig.defaults
@@ -70,7 +70,7 @@ cosmo-radio/                       # 项目根 = ESP-IDF 项目
 | 7  | NFC_MOSI     | J2 pin 3      | SPI2 via GPIO Matrix |
 | 6  | NFC_MISO     | J2 pin 4      | SPI2 via GPIO Matrix |
 | 5  | NFC_IRQ      | J2 pin 5      | low-active, 接线预留，固件未用 |
-| 4  | NFC_RST      | J2 pin 8      | low-active |
+| 4  | NFC_RST      | J2 pin 7      | low-active |
 | 19 | USB_DM       | J5 (4P)       | OTG dongle D-, 同时是 DevKitC native USB-C 上的 D- |
 | 20 | USB_DP       | J5 (4P)       | OTG dongle D+ |
 | 48 | (board RGB)  | DevKitC 板载  | WS2812B onboard，不外接 |
@@ -158,8 +158,8 @@ Carrier board **hand-drawn in 嘉立创EDA专业版 (JLCEDA Pro), manufactured b
 （注：早期 Plan v2 用 KiCad + circuit-synth 自动布线探索过，**未使用，已删除**，见 git 历史。）
 
 - Source: `pcb/cosmoradio-v4-jlceda/cosmoradio-v4-r1.0.epro2`
-- Spec (生产/装配): `docs/project/CosmoRadio-V4-PCB-Spec.md`
-- BOM: `docs/project/CosmoRadio-V4-BOM及报价分析.md`
+- Spec (生产/装配): `project/v4/shared/硬件参考资料.md`
+- BOM: `project/v4/shared/物料清单与采购参考.md`
 
 Key design decisions:
 - ESP32-S3 DevKitC plugs into **两条 1×22 单排母** (not soldered, easy to swap)
@@ -186,22 +186,19 @@ Three-circle layout matching physical mask. Transfer to device and open in brows
 
 - ~~EC11-R 右旋钮方向异常 (PCB r1.0)~~：2026-05-22 固件 walkaround 修复。打板后右旋钮表现为"任意方向转都是 CW、按下变 CCW"——根因是 P1.epro2 把 J4 的引脚顺序画成跟 J3 镜像（J3=`A,GND,B,GND,SW`，J4=`SW,GND,B,GND,A`），单一线序在 J4 上把物理 A 接到 EC11-R-SW net、SW 接到 EC11-R-A net。固件在 `main/input_handler.c` 重新指派 `GPIO_ENC2_A/B/SW`（18/8/17）并 swap A↔B 让左右旋钮"向内拨"方向一致。PCB r1.1 应把 J4 改回对称排列再去掉 walkaround。
 - ~~HID Key Report 无多键支持~~：2026-05-08 已用 `s_pressed_keys[6]` + `s_hid_mutex` 重构 (`main/tusb_hid_example_main.c`)。input + NFC 两条 task 现在通过同一把锁串行化报告提交，按住 F1 + 转旋钮等组合能正确发出。
+- ~~HID key-up 可能因 endpoint busy 丢失~~：2026-05-28 修复。`tusb_hid_example_main.c` 提交 HID report 前等待 `tud_hid_ready()`，超时后由后台 retry task 补发当前按键状态；release report 不再因为紧跟 press report 而静默丢弃。
 - ~~sdkconfig 仍是 V3 4MB 配置~~：2026-05-08 升级为 N16R8 (16MB QIO flash + 8MB Octal PSRAM @ 80MHz)。bootloader 不再警告 size mismatch；PSRAM 启用后 heap 可在大 buffer 场景自动外溢到 SPIRAM。
-- ~~NFC 模块未接 / 无响应导致整机 reboot loop~~：2026-05-10 修复。`nfc_handler_init/start` 不再用 `ESP_ERROR_CHECK` 包裹，失败时只 `ESP_LOGW` 并继续，旋钮/按钮/HID 在裸板（无 RC522）场景照常工作。**约束**：NFC 是可选外设，新增外设时考虑同样的"失败降级"策略；只对"系统级别不可恢复"的失败用 `ESP_ERROR_CHECK`（mutex 创建、TinyUSB 安装等）。
+- ~~按钮释放沿丢失会导致 HID 长按卡住~~：2026-05-28 修复。`input_handler.c` 对 Action Button / EC11 SW 做 active-low 状态机和 10ms 物理电平复核；即使 GPIO 中断释放沿丢失，也会按实际 GPIO level 补发 key up。
+- ~~NFC 模块未接 / 无响应导致整机 reboot loop~~：2026-05-10 修复为非致命；2026-05-28 增加后台重试。`nfc_handler_init/start` 不再用 `ESP_ERROR_CHECK` 包裹，失败时只 `ESP_LOGW` 并继续，旋钮/按钮/HID 在裸板（无 RC522）场景照常工作；若 RC522 上电慢或第一次 start 失败，`nfc_handler.c` 每 5s 后台重试直到成功。**约束**：NFC 是可选外设，新增外设时考虑同样的"失败降级"策略；只对"系统级别不可恢复"的失败用 `ESP_ERROR_CHECK`（mutex 创建、TinyUSB 安装等）。
 
 ## Documentation Structure
 
 ```
-docs/
-├── assets/          # 元器件引脚图、原理图、产品截图 (PNG)
-├── firmware/        # 固件实现文档
-├── hardware/        # 硬件模块设计方案 (每个模块一个 .md)
-├── legacy/          # 弃用内容 (E5Ultra, 旧参考)
-└── project/         # BOM、PCB Spec、项目主文档、R1-R3 归档
-    ├── cosmoradio-yangweile-customized-hardware.md  # 项目主文档（合同、交付、财务）
-    ├── CosmoRadio-V4-BOM及报价分析.md
-    ├── CosmoRadio-V4-PCB-Spec.md
-    └── archive-r1-r3/                               # V1-V3 历史交付文档
+project/
+├── archive-r1-r3/              # V1-V3 历史交付文档
+└── v4/
+    ├── shared/      # V4 客户交付包，上传飞书的唯一目录
+    └── internal/               # 内部备忘录、原始订单数据、历史主文档，不交付
 ```
 
 ## Related Repos (archived, not active)
@@ -223,20 +220,20 @@ docs/
    - 命名：`<模块名>-<内容>.png`（如 `rc522-mini-pinout-and-schematic.png`）
    - 产品页截图、引脚定义图、原理图
 
-3. **BOM 更新** `docs/project/CosmoRadio-V4-BOM及报价分析.md`
+3. **BOM 更新** `project/v4/shared/物料清单与采购参考.md`
    - 新增采购条目（编号、规格、采购量、单价、链接索引）
    - 更新采购总计和单套成本
 
 4. **GPIO/引脚分配** 更新本文件 (CLAUDE.md) 的 GPIO Pin Assignments 表
 
-5. **PCB 更新**（如需要）更新 `docs/project/CosmoRadio-V4-PCB-Spec.md` 连接器定义
+5. **PCB 更新**（如需要）更新 `project/v4/shared/硬件参考资料.md` 连接器定义
 
 ### 文件命名
 
 - 目录名：小写英文，连字符分隔 (`hardware/`, `legacy/`)
 - 文档：小写英文，连字符分隔 (`nfc.md`, `usb.md`)
 - 图片：`<模块>-<描述>.png` (`usb-c-breakout-6p-pinout.png`)
-- 项目文档 (docs/project/)：中文标题允许
+- 项目文档 (project/)：中文标题允许
 
 ## Documentation Language
 

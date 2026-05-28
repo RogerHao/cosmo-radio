@@ -1,0 +1,5 @@
+*.pdf binary
+*.xlsx binary
+*.zip binary
+*.step -diff
+*.dxf -diff

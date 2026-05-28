@@ -1,11 +1,11 @@
 # CosmoRadio V4 — TODO
 
-> **✅ 技术验证 + 单套原型已交付（2026-05-22）** — 见 [技术验证报告](docs/project/CosmoRadio-V4-技术验证报告.md)。
-> 剩余仅为 post-delivery 回归（需新 Tab A9）+ r1.1 优化，详见文末「当前范围」与验证报告 §5/§6。
+> **✅ 技术验证 + 单套原型已交付（2026-05-22）** — 见 [V4 资料包](project/v4/shared/先读说明.md)。
+> post-delivery 回归已于 2026-05-24 结项确认完成；剩余仅为 PCB 制造文件归档 + r1.1 优化建议。
 >
 > 第四期：2026-04-01 启动 → 2026-04-02 取消 → 2026-04-29 重启
 > 当前交付：技术方案验证 + 单套原型制作
-> 项目文档：[docs/project/](docs/project/)（symlink → codex）
+> 项目文档：[project/](project/)
 > 合同价：¥5,000 | 目标交付：2026-05-20 左右（实际 2026-05-22 完成）
 
 ## 2026-05-07 整体技术方案验证完成 ✅
@@ -46,6 +46,15 @@
 - 📌 顺便把原理图里几个标错的"GND/+5V"标签（H-L pin 1、H-R pin 1/pin 2）改正——这些 net 物理上不是电源，r1.0 是因 PCB 走线没真连才幸免
 
 详见 [CLAUDE.md "PCB r1.0 EC11-R 接线 walkaround"](CLAUDE.md#pcb-r10-ec11-r-接线-walkaround2026-05-22)。
+
+---
+
+## 2026-05-28 固件安全回归修复 ✅
+
+- Action Button / EC11 SW 改为中断触发 + 10ms 物理电平复核，释放沿丢失时仍会补发 key up ✅ 2026-05-28
+- HID report 提交增加 endpoint ready 等待和后台 retry，避免 press 后 release report 因 endpoint busy 丢失 ✅ 2026-05-28
+- NFC start 失败后改为后台 5s 重试，避免 RC522 上电慢导致开机后永久不可用 ✅ 2026-05-28
+- 已在 PCB r1.0 装机状态烧录验证：RC522 初始化成功，Action Button `pressed` / `released` 连续成对出现 ✅ 2026-05-28
 
 ---
 
@@ -135,6 +144,7 @@
 - [x] `sdkconfig.defaults` 更新：N16R8 16MB flash + octal PSRAM ✅ 2026-05-08
 - [x] HID Key Report 多键并发支持（`pressed_keys[6]` 状态数组 + mutex，消除 NFC 字符串注入与用户按键的竞态） ✅ 2026-05-08
 - [x] NFC 启动失败容错：`nfc_handler_init/start` 失败时只 warning 不 abort，裸板（无 RC522）演示不再 reboot loop ✅ 2026-05-10
+- [x] 按钮释放安全复核 + HID key-up 重试 + NFC 后台启动重试 ✅ 2026-05-28
 - [ ] NFC SPI 时钟从 1MHz 拉回 5MHz（需 PCB 焊好后验证，飞线版受 RF 噪声干扰）
 
 ### 旋钮与协议
@@ -190,7 +200,7 @@
 关键决策：
 1. **音响**：使用平板自带音响，不外接
 2. **按钮**：键盘轴 + 6.25U 卫星轴空格键（~10cm），物料预计 04-02/03 到
-3. **NFC 数量**：待杨炜乐确认（1 vs 2），1 个 NFC = 8 根线，2 个 GPIO 开销过大
+3. **NFC 数量**：2026-05-06 已确认最终使用 1 个 RC522 mini
 4. **螺丝**：M2.5×10 平头内六角
 5. **旋钮按压**：EC11 SW 引脚会接线，功能可选不用
 6. **设备宽度**：暂继续用弯头线，两边各宽 1cm 增加安装灵活性

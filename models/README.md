@@ -1,32 +1,54 @@
 # CosmoRadio 3D 模型
 
-外壳与结构件的 3D 打印模型。**`v4/` 是 V4 技术验证交付的最终模型集**，对应实焊验证通过的单套原型（iMac G3 斜面站立式，三圆形"IOI"遮罩 + 侧面 Action Button）。Fusion 360 装配工程名 `cosmo-radio-v4-prototype`。
+外壳与结构件的 3D 打印模型索引。`v4/` 是 V4 技术验证交付模型集，对应单套原型（iMac G3 斜面站立式，三圆形 IOI 遮罩 + 顶部 Action Button + NFC）。Fusion 360 云端装配工程名：`cosmo-radio-v4-prototype`。
 
-> ⚠️ **模型二进制文件（STL/3MF/STEP）被 `.gitignore` 排除，不进 git**（大文件资产策略）。本 README 是 git 里唯一的模型清单。**交接/交付时，实际模型文件走飞书或单独拷贝**，不能靠 clone 仓库获得。Fusion 360 源工程在 Autodesk 云端（`cosmo-radio-v4-prototype`）。
+> 模型二进制文件（STL / 3MF / STEP）被 `.gitignore` 排除，不进 git。交接/交付时，实际模型文件走飞书或独立压缩包；不能靠 clone 仓库获得。
 
-> 文件约定：`.3mf` = Bambu Studio 工程/切片文件（含打印参数）；`.stl` = 网格导出（通用）。
-> 打印机：拓竹 P2S。
+详细打印文件和截图见：[V4 交付包 / 3D打印文件](../project/v4/shared/3D打印文件/)。
 
-## v4/ — 最终交付模型集
+## v4/ — V4 模型集
 
-装配顶层部件（以 Fusion 装配为准）：
+### STL 零件
 
-| 部件 | 文件 | 说明 |
+| 文件 | 零件 | 说明 |
 |------|------|------|
-| 主体壳 | `cosmo-radio-v4-prototype-main.{stl,3mf}` | iMac G3 斜面主体，三圆遮罩开孔 |
-| 背板 | `cosmo-radio-v4-prototype-back.{stl,3mf}` / `…-back-with-hole.stl` | 可替换背板（含开孔变体） |
-| 按钮座 | `button-base.{stl,3mf}` | Action Button 安装座（键盘轴 + 6.25U 卫星轴） |
-| 按钮 | `button.{stl,3mf}` / `button-round.stl` / `button-spring.{stl,3mf}` | 键帽 + 弹性结构 |
-| NFC 座 | `nfc-base.{stl,3mf}` / `nfc-base-print.{stl,3mf}` | RC522 模块安装座（天线朝外） |
-| 旋钮帽 | `rotary-knob.{stl,3mf}` | EC11 旋钮帽 ×2 |
-| 脚垫 | `foot.{stl,3mf}` | 底部支脚 |
-| 充电口背件 | `back-charger.{stl,3mf}` | 充电口位结构 |
-| 内部紧固件 | `pad-faster.{stl,3mf}` / `nfc-faster.{stl,3mf}` | 平板/NFC 固定件（`*-faster` = 紧固件，非夹具） |
-| NFC 卡座 | `nfc-tag.3mf` | NFC 标签相关 |
+| `外壳主体.stl` | 外壳主体 | 三圆遮罩开孔主体 |
+| `外壳背板.stl` | 外壳背板 | 主背板 |
+| `充电背板.stl` | 充电口背件 | OTG / 充电线材出入口结构 |
+| `按钮安装外壳.stl` | Action Button 安装座 | Kailh BOX 轴 + 6.25U 卫星轴安装结构 |
+| `圆润按钮.stl` | 圆润按钮键帽 | 默认按钮形态 |
+| `标准按钮.stl` | 标准按钮键帽 | 备选按钮形态 |
+| `NFC安装外壳.stl` | NFC 安装外壳 | RC522 mini 模块安装壳 |
+| `NFC固定支架.stl` | NFC 固定支架 | NFC 模块压紧 / 固定件 |
+| `平板固定支架.stl` | 平板固定支架 | 已进入整套打印工程 Plate 4 |
+| `底部圆脚.stl` | 底部圆脚 | 单套 4 个 |
+| `旋钮.stl` | EC11 旋钮帽 | 单套 2 个 |
 
-> `Cube.3mf` 为切片软件默认占位对象，非交付件。
+### 3MF 工程
 
-## 历史版本（仅参考）
+| 文件 | 说明 |
+|------|------|
+| `CosmoRadio-V4-整套打印.3mf` | 正式整套打印工程，含 4 个 plate：外壳主体 / 配件 / 外壳背板 / 充电背板及平板固定支架 |
+| `NFC固定支架.3mf` | 历史整套工程副本，交付时以 `CosmoRadio-V4-整套打印.3mf` 为准 |
+| `外壳主体.3mf` | 外壳主体单件工程 |
+| `外壳背板.3mf` | 外壳背板单件工程 |
+| `充电模块.3mf` | 充电口背件单件工程 |
+| `按钮安装外壳.3mf` | Action Button 安装座单件工程 |
+| `标准按钮.3mf` | 标准按钮键帽单件工程（备选按钮） |
+| `NFC安装外壳.3mf` | NFC 安装外壳单件工程 |
+| `NFC测试标签.3mf` | NFC 标签 / 测试件，不属于整机必需外壳件 |
+
+### 打印信息
+
+| 文件 | 说明 |
+|------|------|
+| `打印信息/整套打印-plate截图.png` | 当前整套工程 plate 排布截图 |
+| `打印信息/打印截图.png` | 旧版 plate 排布截图 |
+| `打印信息/打印消耗.png` | Bambu Studio 预估耗材和时间截图 |
+
+当前整套工程预估：4 个 plate，PLA 397.70g，总打印时间 12h57m。完整参数见 V4 3D 打印说明。
+
+## 历史版本
 
 | 目录 | 版本 | 主控 | 形态 |
 |------|------|------|------|

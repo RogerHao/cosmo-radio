@@ -8,7 +8,7 @@
 
 **当前版本：V4**（2026.04 — 2026.05）— 技术方案验证 + 单套原型制作
 
-> 2026-04-29 与 Arthur 达成重启协议：第四期缩小为技术方案验证和单套原型制作，合同价 ¥5,000，目标 2026-05-20 左右交付。原 4 套整机 + 8 套电子套件交付范围已取消。
+> 2026-04-29 与噗噗噗公司确认重启协议：第四期缩小为技术方案验证和单套原型制作，合同价 ¥5,000，目标 2026-05-20 左右交付。原 4 套整机 + 8 套电子套件交付范围已取消。
 
 ## 产品形态
 
@@ -74,7 +74,7 @@
 cosmo-radio/                            # 项目根 = ESP-IDF USB HID 固件
 ├── main/
 │   ├── tusb_hid_example_main.c         # 入口：USB HID + ASCII→HID 编码
-│   ├── input_handler.c/h               # GPIO 中断输入（按钮 + 双 EC11）
+│   ├── input_handler.c/h               # GPIO 中断 + 物理电平复核输入（按钮 + 双 EC11）
 │   ├── nfc_handler.c/h                 # RC522 SPI 扫描 + NDEF Text 解析
 │   └── led_indicator.c/h               # 板载 WS2812 RGB（GPIO48）
 ├── sdkconfig.defaults
@@ -106,10 +106,10 @@ cosmo-radio/                            # 项目根 = ESP-IDF USB HID 固件
 
 ## V4 进度
 
-**2026-05-22 V4 技术验证交付完成 ✅**——PCB r1.0 实焊 + 双板并排功能验证通过，单套原型装配完成。详见 [技术验证报告](docs/project/CosmoRadio-V4-技术验证报告.md)。
+**2026-05-22 V4 技术验证交付完成 ✅**——PCB r1.0 实焊 + 双板并排功能验证通过，单套原型装配完成。详见 [V4 资料包](project/v4/shared/先读说明.md)。
 
 已交付：
-- [x] 2026-04-29 与 Arthur 重启 V4：技术方案验证 + 单套原型，合同价 ¥5,000
+- [x] 2026-04-29 与噗噗噗公司重启 V4：技术方案验证 + 单套原型，合同价 ¥5,000
 - [x] USB-C 充电方案：被动 SS34 注入实测失败 → 内置一分二 OTG 线材子板（YK16-09E V1）验证通过
 - [x] NFC 数量确认：1 个 RC522 mini（2026-05-06）
 - [x] 万能板飞线原型焊接 + GPIO 验证（2026-05-06，[图片](docs/assets/v4-handmade-prototype-2026-05-06.jpg)）
@@ -119,10 +119,10 @@ cosmo-radio/                            # 项目根 = ESP-IDF USB HID 固件
 - [x] 端到端验证：iPhone 写卡 → ESP32 读 NDEF → HID 键入（2026-05-15 实卡验证）
 - [x] **PCB r1.0 载板**：嘉立创EDA手绘 → 打样 → 实焊 → 功能验证（源文件 `pcb/cosmoradio-v4-jlceda/`）
 - [x] 单套整机原型装配（[Fusion 装配 `cosmo-radio-v4-prototype`，模型 `models/v4/`]）
+- [x] Action Button 最终手感、整机热稳定 + 2h 充电链路、NFC 穿透壁厚读距回归（2026-05-24 结项确认）
+- [x] 固件安全回归：按钮释放物理电平复核、HID key-up 重试、NFC 启动后台重试（2026-05-28 PCB 实机烧录验证）
 
-待回归（post-delivery，需新 Tab A9 到货）：
-- [ ] Action Button 最终手感（原 R4 Pad 已损坏，当前用安卓手机替代）
-- [ ] 整机长时间热稳定 + 2h 充电链路回归
+结项归档待办：
 - [ ] PCB 制造文件从嘉立创EDA导出归档（清单见 [pcb/README.md](pcb/README.md)）
 - [ ] r1.1 优化（J4 改对称去 walkaround、NFC 5MHz）— 见验证报告 §6
 
@@ -144,12 +144,12 @@ idf.py -p /dev/cu.usbmodem* flash monitor  # 烧录并监控
 ## 文档索引
 
 **交付（客户）**
-- [V4 交付清单 / Handoff Manifest](docs/project/CosmoRadio-V4-交付清单.md) — 客户/内部边界 + 打包指引
-- [V4 技术验证报告](docs/project/CosmoRadio-V4-技术验证报告.md) ⭐ 交付核心
-- [V4 BOM 及报价分析](docs/project/CosmoRadio-V4-BOM及报价分析.md)
-- [PCB 设计源 + 制造导出清单](pcb/README.md)
-- [3D 模型说明](models/README.md)
-- [项目主文档](docs/project/cosmoradio-yangweile-customized-hardware.md)
+- [V4 资料包先读](project/v4/shared/先读说明.md) ⭐ 交付核心
+- [产品功能与当前边界](project/v4/shared/产品功能与当前边界.md)
+- [平板对接协议](project/v4/shared/平板对接协议.md)
+- [硬件参考资料](project/v4/shared/硬件参考资料.md)
+- [复现与维护指南](project/v4/shared/复现与维护指南.md)
+- [物料清单与采购参考](project/v4/shared/物料清单与采购参考.md)
 
 **硬件方案**
 - [USB 接口方案](docs/hardware/usb.md)
@@ -157,5 +157,6 @@ idf.py -p /dev/cu.usbmodem* flash monitor  # 烧录并监控
 - [OTG 一分二适配器（内置子板）](docs/hardware/otg-adapter.md)
 
 **内部**
-- [V4 项目成本核算](docs/project/CosmoRadio-V4-项目成本核算.md) — 内部，不交付
+- [V4 内部成本备忘录](project/v4/internal/CosmoRadio-V4-内部成本备忘录.md) — 内部，不交付
+- [V4 项目内部主文档](project/v4/internal/cosmoradio-yangweile-customized-hardware.md) — 内部，不交付
 - [V4 待办事项](TODO.md)

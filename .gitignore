@@ -84,7 +84,13 @@ Snipaste_*.png
 # Binaries and large assets (not versioned in git)
 *.apk
 apk/
-models/
+models/**
+!models/
+!models/**/
+!models/**/README.md
+
+# Local project management and Feishu delivery staging
+project/
 
 # IDE config (per-machine, not shared)
 .vscode/

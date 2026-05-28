@@ -117,7 +117,7 @@
 
 - `docs/hardware/usb.md` 中"方案 A / B / C"分析仍保留为历史参考，但其结论已被 dongle 实测 + 本文件覆盖。
 - `pcb/README.md` 第 113-115 行的优先级表里，本方案对应 P1（"拆解一分二线材，取内部 PCB，短线/板内固定"），现在升级为 V4 主路径。
-- BOM (`docs/project/CosmoRadio-V4-BOM及报价分析.md`) 应增加：dongle YK16-09E V1 ¥X / 4P XH2.54 connector ¥0.5 / 4 根 AWG28 飞线 ¥0。下次更新 BOM 时一起补。
+- BOM 与成本口径已归入 [物料清单与采购参考](../../project/v4/shared/物料清单与采购参考.md)：最终 OTG dongle 选型为 CKTUTU YK16-09E V1，¥10/个。
 
 ## 8. 一句话总结
 
