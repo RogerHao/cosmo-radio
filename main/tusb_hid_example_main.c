@@ -45,6 +45,12 @@ static const char *TAG = "USB_HID";
 #define STRING_KEY_DOWN_MS  15
 #define STRING_KEY_UP_MS    15
 
+// HID IN endpoint poll interval is 10 ms in the descriptor. A release report
+// must wait for readiness instead of being dropped while the endpoint is busy.
+#define HID_REPORT_TIMEOUT_MS 80
+// Keep at least one FreeRTOS tick; 5 ms can round to 0 on a 100 Hz tick.
+#define HID_REPORT_RETRY_MS   10
+
 /************* TinyUSB descriptors ****************/
 
 #define TUSB_DESC_TOTAL_LEN (TUD_CONFIG_DESC_LEN + CFG_TUD_HID * TUD_HID_DESC_LEN)
@@ -115,8 +121,10 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
 // `keys_*` operate on the array (held-key set). `hid_*` are the public
 // actions (down / up / pulse / type-char) that wrap report submission.
 static SemaphoreHandle_t s_hid_mutex = NULL;
+static TaskHandle_t s_hid_report_retry_task = NULL;
 static uint8_t s_pressed_keys[6] = {0};
 static uint8_t s_modifier = 0;
+static volatile bool s_hid_report_pending = false;
 
 // Add keycode to the pressed-set. No-op if already present.
 // Returns false on rollover (>6 keys held) — caller can ignore safely.
@@ -145,12 +153,60 @@ static void keys_remove(uint8_t keycode)
     }
 }
 
-// Submit current modifier + pressed-set as a HID report.
+// Submit current modifier + pressed-set as a HID report if the endpoint is ready.
 // MUST be called with s_hid_mutex held.
-static void hid_report_locked(void)
+static bool hid_report_try_locked(void)
 {
-    if (!tud_mounted()) return;
-    tud_hid_keyboard_report(HID_ITF_PROTOCOL_KEYBOARD, s_modifier, s_pressed_keys);
+    if (!tud_hid_ready()) {
+        s_hid_report_pending = true;
+        return false;
+    }
+
+    bool ok = tud_hid_keyboard_report(HID_ITF_PROTOCOL_KEYBOARD, s_modifier, s_pressed_keys);
+    s_hid_report_pending = !ok;
+    if (!ok) {
+        ESP_LOGW(TAG, "HID report submit failed, pending retry");
+    }
+    return ok;
+}
+
+// Wait briefly for the HID IN endpoint and submit the current state. This makes
+// key-up reports durable when they happen immediately after key-down reports.
+// MUST be called with s_hid_mutex held.
+static bool hid_report_locked(void)
+{
+    TickType_t start = xTaskGetTickCount();
+    TickType_t timeout = pdMS_TO_TICKS(HID_REPORT_TIMEOUT_MS);
+    if (timeout == 0) {
+        timeout = 1;
+    }
+
+    while (!tud_hid_ready()) {
+        if (!tud_mounted() || (xTaskGetTickCount() - start) >= timeout) {
+            s_hid_report_pending = true;
+            return false;
+        }
+        vTaskDelay(1);
+    }
+
+    return hid_report_try_locked();
+}
+
+static void hid_report_retry_task(void *arg)
+{
+    (void)arg;
+
+    while (1) {
+        if (s_hid_report_pending && s_hid_mutex != NULL) {
+            xSemaphoreTake(s_hid_mutex, portMAX_DELAY);
+            if (s_hid_report_pending) {
+                hid_report_try_locked();
+            }
+            xSemaphoreGive(s_hid_mutex);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(HID_REPORT_RETRY_MS));
+    }
 }
 
 // Press a key (idempotent). Holds across subsequent reports until hid_key_up().
@@ -374,6 +430,12 @@ void app_main(void)
         abort();
     }
 
+    if (xTaskCreate(hid_report_retry_task, "hid_report_retry", 2 * 1024, NULL,
+                    configMAX_PRIORITIES - 4, &s_hid_report_retry_task) != pdTRUE) {
+        ESP_LOGE(TAG, "Failed to create HID report retry task");
+        abort();
+    }
+
     // Initialize USB
     ESP_LOGI(TAG, "USB initialization");
     tinyusb_config_t tusb_cfg = TINYUSB_DEFAULT_CONFIG();
@@ -405,7 +467,7 @@ void app_main(void)
         nfc_handler_set_callback(on_nfc_tag);
         nfc_err = nfc_handler_start();
         if (nfc_err != ESP_OK) {
-            ESP_LOGW(TAG, "NFC start failed (0x%x) — continuing without NFC", nfc_err);
+            ESP_LOGW(TAG, "NFC start failed (0x%x) — retrying in background", nfc_err);
         }
     } else {
         ESP_LOGW(TAG, "NFC init failed (0x%x) — continuing without NFC", nfc_err);

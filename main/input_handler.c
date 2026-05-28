@@ -39,8 +39,16 @@ static const char *TAG = "INPUT";
 // Event queue size (should handle burst of encoder events)
 #define EVENT_QUEUE_SIZE 32
 
-// Debounce time in microseconds
-#define DEBOUNCE_US 2000
+// Encoder A/B debounce in microseconds. EC11 A/B lines also have 10k + 10nF RC.
+#define ENCODER_DEBOUNCE_US 2000
+
+// Active-low switch debounce. Switch release safety is handled by polling the
+// physical GPIO level, so a missed edge cannot leave HID stuck pressed forever.
+#define SWITCH_DEBOUNCE_US 10000
+
+// Periodic input reconciliation interval. Keep this at least one FreeRTOS tick;
+// otherwise pdMS_TO_TICKS() can round to 0 and create a busy loop.
+#define INPUT_POLL_MS 10
 
 // Long press duration for forced restart (15 seconds in microseconds)
 #define FORCE_RESTART_HOLD_US (15 * 1000000)
@@ -52,19 +60,58 @@ typedef struct {
     int64_t timestamp;
 } gpio_isr_event_t;
 
+typedef struct {
+    uint8_t gpio_num;
+    int stable_level;
+    int candidate_level;
+    int64_t candidate_since_us;
+    input_event_type_t press_event;
+    input_event_type_t release_event;
+    const char *name;
+    bool tracks_force_restart;
+} active_low_switch_t;
+
 // Module state
 static QueueHandle_t s_gpio_evt_queue = NULL;
 static TaskHandle_t s_input_task = NULL;
 static input_event_callback_t s_callback = NULL;
 static volatile int64_t s_last_activity_time = 0;
 static volatile bool s_running = false;
+static volatile uint32_t s_isr_queue_drops = 0;
 
 // Encoder state tracking (for detent detection)
 static uint8_t s_enc1_state = 0;
 static uint8_t s_enc2_state = 0;
-static int s_btn_last = 1;          // Pull-up, 1 = released
-static int s_enc1_sw_last = 1;
-static int s_enc2_sw_last = 1;
+
+static active_low_switch_t s_button = {
+    .gpio_num = GPIO_BUTTON,
+    .stable_level = 1,
+    .candidate_level = 1,
+    .press_event = INPUT_EVENT_BUTTON_PRESS,
+    .release_event = INPUT_EVENT_BUTTON_RELEASE,
+    .name = "Button",
+    .tracks_force_restart = true,
+};
+
+static active_low_switch_t s_enc1_sw = {
+    .gpio_num = GPIO_ENC1_SW,
+    .stable_level = 1,
+    .candidate_level = 1,
+    .press_event = INPUT_EVENT_ENC1_SW_PRESS,
+    .release_event = INPUT_EVENT_ENC1_SW_RELEASE,
+    .name = "ENC1 SW",
+    .tracks_force_restart = false,
+};
+
+static active_low_switch_t s_enc2_sw = {
+    .gpio_num = GPIO_ENC2_SW,
+    .stable_level = 1,
+    .candidate_level = 1,
+    .press_event = INPUT_EVENT_ENC2_SW_PRESS,
+    .release_event = INPUT_EVENT_ENC2_SW_RELEASE,
+    .name = "ENC2 SW",
+    .tracks_force_restart = false,
+};
 
 // Button press timestamp for force restart detection
 static int64_t s_btn_press_time = 0;
@@ -88,11 +135,69 @@ static void IRAM_ATTR gpio_isr_handler(void *arg)
     };
 
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    xQueueSendFromISR(s_gpio_evt_queue, &evt, &xHigherPriorityTaskWoken);
+    if (xQueueSendFromISR(s_gpio_evt_queue, &evt, &xHigherPriorityTaskWoken) != pdTRUE) {
+        s_isr_queue_drops++;
+    }
 
     if (xHigherPriorityTaskWoken) {
         portYIELD_FROM_ISR();
     }
+}
+
+static void dispatch_input_event(input_event_type_t type, int64_t now_us)
+{
+    if (type == INPUT_EVENT_NONE) {
+        return;
+    }
+
+    s_last_activity_time = now_us;
+
+    if (s_callback != NULL) {
+        input_event_t input_evt = {
+            .type = type,
+            .timestamp = xTaskGetTickCount(),
+        };
+        s_callback(&input_evt);
+    }
+}
+
+static void init_switch_state(active_low_switch_t *sw, int64_t now_us)
+{
+    int level = gpio_get_level(sw->gpio_num);
+    sw->stable_level = level;
+    sw->candidate_level = level;
+    sw->candidate_since_us = now_us;
+}
+
+static void update_switch_state(active_low_switch_t *sw, int64_t now_us)
+{
+    int level = gpio_get_level(sw->gpio_num);
+
+    if (level != sw->candidate_level) {
+        sw->candidate_level = level;
+        sw->candidate_since_us = now_us;
+        return;
+    }
+
+    if (level == sw->stable_level || (now_us - sw->candidate_since_us) < SWITCH_DEBOUNCE_US) {
+        return;
+    }
+
+    sw->stable_level = level;
+
+    if (sw->tracks_force_restart) {
+        s_btn_press_time = (level == 0) ? now_us : 0;
+    }
+
+    ESP_LOGD(TAG, "%s %s", sw->name, level == 0 ? "pressed" : "released");
+    dispatch_input_event(level == 0 ? sw->press_event : sw->release_event, now_us);
+}
+
+static void update_all_switches(int64_t now_us)
+{
+    update_switch_state(&s_button, now_us);
+    update_switch_state(&s_enc1_sw, now_us);
+    update_switch_state(&s_enc2_sw, now_us);
 }
 
 // Process encoder state change, return direction
@@ -125,103 +230,75 @@ static input_event_type_t process_encoder(uint8_t new_clk, uint8_t new_dt,
 static void input_handler_task(void *arg)
 {
     gpio_isr_event_t evt;
-    input_event_t input_evt;
+    uint32_t logged_isr_queue_drops = 0;
 
     ESP_LOGI(TAG, "Input task started");
 
     // Initialize encoder states
     s_enc1_state = (gpio_get_level(GPIO_ENC1_A) << 1) | gpio_get_level(GPIO_ENC1_B);
     s_enc2_state = (gpio_get_level(GPIO_ENC2_A) << 1) | gpio_get_level(GPIO_ENC2_B);
-    s_btn_last = gpio_get_level(GPIO_BUTTON);
-    s_enc1_sw_last = gpio_get_level(GPIO_ENC1_SW);
-    s_enc2_sw_last = gpio_get_level(GPIO_ENC2_SW);
+
+    int64_t now_us = esp_timer_get_time();
+    init_switch_state(&s_button, now_us);
+    init_switch_state(&s_enc1_sw, now_us);
+    init_switch_state(&s_enc2_sw, now_us);
+    s_btn_press_time = (s_button.stable_level == 0) ? now_us : 0;
 
     s_running = true;
-    s_last_activity_time = esp_timer_get_time();
+    s_last_activity_time = now_us;
 
     while (s_running) {
-        // Wait for GPIO events with timeout (allows periodic wakeup for housekeeping)
-        if (xQueueReceive(s_gpio_evt_queue, &evt, pdMS_TO_TICKS(100))) {
-            int64_t now = esp_timer_get_time();
+        bool has_gpio_event = xQueueReceive(s_gpio_evt_queue, &evt, pdMS_TO_TICKS(INPUT_POLL_MS)) == pdTRUE;
+        int64_t now = esp_timer_get_time();
 
-            // Software debounce: ignore if too soon after last event on this pin
-            if ((now - s_last_isr_time[evt.gpio_num]) < DEBOUNCE_US) {
-                continue;  // Skip this event
-            }
-            s_last_isr_time[evt.gpio_num] = now;
+        uint32_t isr_queue_drops = s_isr_queue_drops;
+        if (isr_queue_drops != logged_isr_queue_drops) {
+            ESP_LOGW(TAG, "GPIO ISR queue dropped %lu events total", (unsigned long)isr_queue_drops);
+            logged_isr_queue_drops = isr_queue_drops;
+        }
 
-            input_evt.type = INPUT_EVENT_NONE;
-            input_evt.timestamp = xTaskGetTickCount();
+        if (has_gpio_event && evt.gpio_num <= GPIO_MAX_USED) {
+            input_event_type_t event_type = INPUT_EVENT_NONE;
 
-            // Update last activity time
-            s_last_activity_time = now;
-
-            // Process based on which GPIO triggered
-            if (evt.gpio_num == GPIO_BUTTON) {
-                int btn_level = gpio_get_level(GPIO_BUTTON);
-                if (btn_level == 0 && s_btn_last == 1) {
-                    s_btn_press_time = esp_timer_get_time();
-                    input_evt.type = INPUT_EVENT_BUTTON_PRESS;
-                    ESP_LOGD(TAG, "Button pressed");
-                } else if (btn_level == 1 && s_btn_last == 0) {
-                    s_btn_press_time = 0;
-                    input_evt.type = INPUT_EVENT_BUTTON_RELEASE;
-                    ESP_LOGD(TAG, "Button released");
+            if (evt.gpio_num == GPIO_ENC1_A || evt.gpio_num == GPIO_ENC1_B) {
+                if ((now - s_last_isr_time[evt.gpio_num]) < ENCODER_DEBOUNCE_US) {
+                    goto reconcile_switches;
                 }
-                s_btn_last = btn_level;
-            }
-            else if (evt.gpio_num == GPIO_ENC1_A || evt.gpio_num == GPIO_ENC1_B) {
+                s_last_isr_time[evt.gpio_num] = now;
+
                 uint8_t a = gpio_get_level(GPIO_ENC1_A);
                 uint8_t b = gpio_get_level(GPIO_ENC1_B);
-                input_evt.type = process_encoder(a, b, &s_enc1_state, true);
-                if (input_evt.type == INPUT_EVENT_ENC1_CW) {
+                event_type = process_encoder(a, b, &s_enc1_state, true);
+                if (event_type == INPUT_EVENT_ENC1_CW) {
                     ESP_LOGD(TAG, "ENC1 CW");
-                } else if (input_evt.type == INPUT_EVENT_ENC1_CCW) {
+                } else if (event_type == INPUT_EVENT_ENC1_CCW) {
                     ESP_LOGD(TAG, "ENC1 CCW");
                 }
             }
-            else if (evt.gpio_num == GPIO_ENC1_SW) {
-                int sw_level = gpio_get_level(GPIO_ENC1_SW);
-                if (sw_level == 0 && s_enc1_sw_last == 1) {
-                    input_evt.type = INPUT_EVENT_ENC1_SW_PRESS;
-                    ESP_LOGD(TAG, "ENC1 SW pressed");
-                } else if (sw_level == 1 && s_enc1_sw_last == 0) {
-                    input_evt.type = INPUT_EVENT_ENC1_SW_RELEASE;
-                    ESP_LOGD(TAG, "ENC1 SW released");
-                }
-                s_enc1_sw_last = sw_level;
-            }
             else if (evt.gpio_num == GPIO_ENC2_A || evt.gpio_num == GPIO_ENC2_B) {
+                if ((now - s_last_isr_time[evt.gpio_num]) < ENCODER_DEBOUNCE_US) {
+                    goto reconcile_switches;
+                }
+                s_last_isr_time[evt.gpio_num] = now;
+
                 uint8_t a = gpio_get_level(GPIO_ENC2_A);
                 uint8_t b = gpio_get_level(GPIO_ENC2_B);
-                input_evt.type = process_encoder(a, b, &s_enc2_state, false);
-                if (input_evt.type == INPUT_EVENT_ENC2_CW) {
+                event_type = process_encoder(a, b, &s_enc2_state, false);
+                if (event_type == INPUT_EVENT_ENC2_CW) {
                     ESP_LOGD(TAG, "ENC2 CW");
-                } else if (input_evt.type == INPUT_EVENT_ENC2_CCW) {
+                } else if (event_type == INPUT_EVENT_ENC2_CCW) {
                     ESP_LOGD(TAG, "ENC2 CCW");
                 }
             }
-            else if (evt.gpio_num == GPIO_ENC2_SW) {
-                int sw_level = gpio_get_level(GPIO_ENC2_SW);
-                if (sw_level == 0 && s_enc2_sw_last == 1) {
-                    input_evt.type = INPUT_EVENT_ENC2_SW_PRESS;
-                    ESP_LOGD(TAG, "ENC2 SW pressed");
-                } else if (sw_level == 1 && s_enc2_sw_last == 0) {
-                    input_evt.type = INPUT_EVENT_ENC2_SW_RELEASE;
-                    ESP_LOGD(TAG, "ENC2 SW released");
-                }
-                s_enc2_sw_last = sw_level;
-            }
 
-            // Dispatch event if valid
-            if (input_evt.type != INPUT_EVENT_NONE && s_callback != NULL) {
-                s_callback(&input_evt);
-            }
+            dispatch_input_event(event_type, now);
         }
+
+reconcile_switches:
+        update_all_switches(now);
 
         // Check for force restart: button held for 15 seconds
         if (s_btn_press_time != 0) {
-            int64_t now = esp_timer_get_time();
             int64_t hold_duration = now - s_btn_press_time;
             if (hold_duration >= FORCE_RESTART_HOLD_US) {
                 ESP_LOGW(TAG, "Button held for 15 seconds - forcing restart!");

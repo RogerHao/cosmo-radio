@@ -9,6 +9,8 @@
 #include "nfc_handler.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "rc522.h"
 #include "driver/rc522_spi.h"
 #include "rc522_picc.h"
@@ -20,6 +22,11 @@ static const char *TAG = "NFC";
 // RC522's heartbeat check can flicker when the card sits at the edge of the
 // RF field, which would otherwise type the same string multiple times.
 #define NFC_DEDUP_WINDOW_US (1500 * 1000)
+
+// RC522 modules can miss the first reset/read test while the tablet OTG power
+// rail and the module oscillator settle. Keep retrying instead of permanently
+// disabling NFC after one boot-time failure.
+#define NFC_START_RETRY_MS 5000
 
 // Pin map: see CLAUDE.md "GPIO Pin Assignments" for net names + PCB position.
 // IRQ (GPIO 5) is wired but not used here — polling mode handles edge detection
@@ -50,6 +57,8 @@ static rc522_spi_config_t s_driver_config = {
 static rc522_driver_handle_t s_driver = NULL;
 static rc522_handle_t s_scanner = NULL;
 static nfc_tag_callback_t s_callback = NULL;
+static TaskHandle_t s_start_retry_task = NULL;
+static volatile bool s_started = false;
 
 // Last fired UID + timestamp, for de-duplication.
 static char s_last_uid[RC522_PICC_UID_SIZE_MAX * 2 + 1] = {0};
@@ -215,6 +224,35 @@ static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t even
     }
 }
 
+static esp_err_t nfc_start_once(void)
+{
+    esp_err_t ret = rc522_start(s_scanner);
+    if (ret == ESP_OK) {
+        s_started = true;
+        ESP_LOGI(TAG, "NFC scanner started");
+    }
+    return ret;
+}
+
+static void nfc_start_retry_task(void *arg)
+{
+    (void)arg;
+
+    while (!s_started) {
+        esp_err_t ret = nfc_start_once();
+        if (ret == ESP_OK) {
+            break;
+        }
+
+        ESP_LOGW(TAG, "NFC start retry failed (0x%x), retrying in %d ms",
+                 ret, NFC_START_RETRY_MS);
+        vTaskDelay(pdMS_TO_TICKS(NFC_START_RETRY_MS));
+    }
+
+    s_start_retry_task = NULL;
+    vTaskDelete(NULL);
+}
+
 esp_err_t nfc_handler_init(void)
 {
     if (s_scanner != NULL) {
@@ -264,5 +302,23 @@ esp_err_t nfc_handler_start(void)
         ESP_LOGE(TAG, "nfc_handler_init must be called first");
         return ESP_ERR_INVALID_STATE;
     }
-    return rc522_start(s_scanner);
+
+    if (s_started) {
+        return ESP_OK;
+    }
+
+    esp_err_t ret = nfc_start_once();
+    if (ret == ESP_OK) {
+        return ESP_OK;
+    }
+
+    ESP_LOGW(TAG, "NFC start failed (0x%x), scheduling background retry", ret);
+    if (s_start_retry_task == NULL) {
+        if (xTaskCreate(nfc_start_retry_task, "nfc_start_retry", 3 * 1024, NULL,
+                        configMAX_PRIORITIES - 4, &s_start_retry_task) != pdTRUE) {
+            ESP_LOGE(TAG, "Failed to create NFC start retry task");
+        }
+    }
+
+    return ret;
 }
