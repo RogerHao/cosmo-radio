@@ -135,6 +135,8 @@ idf.py build                               # 构建
 idf.py -p /dev/cu.usbmodem* flash monitor  # 烧录并监控
 ```
 
+> ⚠️ 烧录必须走 DevKitC 的 **UART USB-C** 口（本板 UART 桥是 WCH CH343），别插 native/OTG 口——两个口在 macOS 下都枚举成 `usbmodem`，靠 USB VID 区分（`0x1A86`=UART 桥可烧 / `0x303A`=OTG 口烧不了）。详见 [CLAUDE.md "烧录端口"](CLAUDE.md)。
+
 ## GPIO 引脚分配
 
 完整 GPIO → net → 连接器 映射、PCB 物理位置、PCB r1.0 EC11-R 接线 walkaround 全部见 [CLAUDE.md "GPIO Pin Assignments"](CLAUDE.md#gpio-pin-assignments-v4-pcb-r10--esp32-s3-devkitc-n16r8)。固件里 `main/input_handler.c` 和 `main/nfc_handler.c` 的 `#define` 是各自的 GPIO 角色权威源。

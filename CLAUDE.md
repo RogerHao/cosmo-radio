@@ -33,9 +33,35 @@
 get_idf                                    # 激活 ESP-IDF 环境
 idf.py set-target esp32s3                  # 设置目标芯片（首次）
 idf.py build                               # 构建
-idf.py -p /dev/cu.usbmodem* flash monitor  # 烧录 + 监控
+idf.py -p /dev/cu.usbmodem<UART桥> flash monitor  # 烧录 + 监控（端口见下）
 idf.py fullclean                           # 清理构建
 ```
+
+### 烧录端口（务必走 UART 口，别走 OTG 口）
+
+DevKitC 有**两个 USB-C 口**，macOS 下**都叫 `/dev/cu.usbmodem*`**，不能靠端口名区分。`idf.py flash` 必须连 **UART USB-C** 口，连错到 native/OTG 口会报 `Failed to connect ... No serial data received`（OTG 口跑 TinyUSB HID，auto-reset 进不了下载模式）。这也呼应 GPIO 章节"运行时不要插 OTG USB-C"的警示。
+
+**靠 USB VID 区分**（端口名不可靠），插上后跑：
+
+```bash
+ioreg -p IOUSB -l -w 0 | grep -iE "idVendor|USB Product Name"
+```
+
+| VID | 含义 | 能否烧录 |
+|-----|------|---------|
+| `0x1A86` (=6790) | **本板 UART 桥 = WCH CH343**（"USB Single Serial"）| ✅ 从这烧 |
+| `0x303A` (=12346) | Espressif native USB（"Espressif Device" / TinyUSB app 在跑）| ❌ HID 口，烧不了 |
+| `0x1001` PID | Espressif ROM USB-Serial-JTAG（手动按住 BOOT+点 EN 进的下载模式）| ⚠ 仅手动下载模式应急用 |
+
+> ⚠️ 本板 UART 桥是 **WCH CH343**（不是常见的 CP2102N）。新版 macOS 用内建 CDC-ACM 驱动把它枚举成 `usbmodem`，所以**不带** `usbserial`/`SLAB` 名字——别被名字骗成 native USB 口。
+
+**复位重启 app 用 `esptool run`，别用 serial-monitor skill 的 `reset`**：skill 的 DTR/RTS 软复位脉冲是为 native USB-CDC 调的，在 CH343 这类外置桥上会把 IO0 拉低 → 进下载模式（`boot:0x0 DOWNLOAD`，"waiting for download"）而不是重启 app。想干净重启已烧好的固件：
+
+```bash
+python -m esptool --chip esp32s3 -p /dev/cu.usbmodem<UART桥> run   # RTS 复位 + IO0 高 = 正常 boot
+```
+
+或物理点一下 EN 键。
 
 ## Code Architecture
 
